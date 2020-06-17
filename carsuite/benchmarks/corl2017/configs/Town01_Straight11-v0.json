@@ -1,0 +1,7 @@
+{
+    "town": "Town01",
+    "origin": 165,
+    "destination": 180,
+    "num_vehicles": 100,
+    "num_pedestrians": 0
+}
