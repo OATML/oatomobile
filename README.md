@@ -105,7 +105,7 @@ If you use CARSUITE in your work, please cite the accompanying
 @inproceedings{filos2020can,
     title={Can Autonomous Vehicles Identify, Recover From, and Adapt to Distribution Shifts?},
     author={Filos, Angelos and
-            Tigkas, Panagiotis and
+            Tigas, Panagiotis and
             McAllister, Rowan and
             Rhinehart, Nicholas and
             Levine, Sergey and
