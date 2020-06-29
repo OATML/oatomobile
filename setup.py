@@ -27,7 +27,7 @@ with open(os.path.join(here, "README.md"), encoding="utf-8") as f:
 
 setup(
     name="carsuite",
-    version="0.0.1",
+    version="0.0.2",
     description=
     "The carsuite is a tool for developing and testing driving agents on the CARLA simulator",
     long_description=long_description,
@@ -35,7 +35,7 @@ setup(
     url="https://github.com/oatml/carsuite",
     author="Oxford Applied and Theoretical Machine Learning Group",
     author_email="oatml@googlegroups.com",
-    license="Apache-2.0",
+    license="Apache License, Version 2.0",
     packages=find_packages(),
     install_requires=[
         "absl-py==0.9.0",
@@ -51,6 +51,7 @@ setup(
         "networkx==2.4",
         "imageio==2.8.0",
         "tabulate==0.8.7",
+        "scikit-image==0.15.0",
     ],
     tests_require=[
         "pytest",
@@ -65,15 +66,18 @@ setup(
         ],
         # Additional requirements for PyTorch baselines.
         "torch": [
-            "torch==1.5.0",
+            "torch==1.5.1",
             "torchvision==0.6.0",
         ],
     },
     classifiers=[
         "Development Status :: 3 - Alpha",
-        "Intended Audience :: Researchers",
+        "Intended Audience :: Science/Researchers",
         "Topic :: Software Development :: Build Tools",
         "License :: OSI Approved :: Apache 2.0 License",
+        "Operating System :: POSIX :: Linux",
+        "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.5",
+        "Topic :: Scientific/Engineering :: Artificial Intelligence",
     ],
 )

@@ -3,8 +3,12 @@
   **[Overview](#overview)**
 | **[Installation](#installation)**
 | **[Baselines]**
-| **[Examples]**
 | **[Paper]**
+
+![PyPI Python Version](https://img.shields.io/pypi/pyversions/carsuite)
+![PyPI version](https://badge.fury.io/py/carsuite.svg)
+[![arXiv](https://img.shields.io/badge/arXiv-2006.14911-b31b1b.svg)](https://arxiv.org/abs/2006.14911)
+
 
 CARSUITE is a library for autonomous driving research.
 CARSUITE strives to expose simple, efficient, well-tuned and readable agents, that serve both as reference implementations of popular algorithms and as strong baselines, while still providing enough flexibility to do novel research.
@@ -118,7 +122,7 @@ If you use CARSUITE in your work, please cite the accompanying
 [Baselines]: carsuite/baselines/
 [Examples]: examples/
 [CARLA]: https://carla.readthedocs.io/
-[Paper]: https://arxiv.org/abs/2006.XXXXX
+[Paper]: https://arxiv.org/abs/2006.14911
 [TensorFlow]: https://tensorflow.org
 [PyTorch]: http://pytorch.org
 [gym]: https://github.com/openai/gym
