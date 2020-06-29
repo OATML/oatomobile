@@ -18,7 +18,7 @@ distribution shift. CARNOVEL is based on the CARLA simulator.
 
 #### References
 
-[1]: Angelos Filos*, Panagiotis Tigkas*, Rowan McAllister, Nicholas Rhinehart, Sergey Levine, Yarin Gal
+[1]: Angelos Filos*, Panagiotis Tigas*, Rowan McAllister, Nicholas Rhinehart, Sergey Levine, Yarin Gal
      Can Autonomous Vehicles Identify, Recover From, and Adapt to Distribution Shifts?
 """
 
