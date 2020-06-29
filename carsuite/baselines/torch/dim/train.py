@@ -17,16 +17,16 @@
 import os
 from typing import Mapping
 
-import torch
-import torch.distributions as D
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
 import tqdm
 from absl import app
 from absl import flags
 from absl import logging
 
+import torch
+import torch.distributions as D
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
 from carsuite.baselines.torch.dim.model import ImitativeModel
 from carsuite.baselines.torch.logging import Checkpointer
 from carsuite.baselines.torch.logging import TensorBoardWriter

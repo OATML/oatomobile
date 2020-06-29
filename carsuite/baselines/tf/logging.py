@@ -20,9 +20,9 @@ from typing import Optional
 import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
+
 import sonnet as snt
 import tensorflow as tf
-
 from carsuite.baselines.tf.typing import ArrayLike
 
 COLORS = [

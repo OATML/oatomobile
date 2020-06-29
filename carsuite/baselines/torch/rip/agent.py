@@ -19,10 +19,10 @@ from typing import Sequence
 
 import numpy as np
 import scipy.interpolate
-import torch
-import torch.optim as optim
 
 import carsuite
+import torch
+import torch.optim as optim
 from carsuite.baselines.base import SetPointAgent
 from carsuite.baselines.torch.dim.model import ImitativeModel
 

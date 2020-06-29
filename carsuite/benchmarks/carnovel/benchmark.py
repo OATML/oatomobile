@@ -114,7 +114,6 @@ class CARNOVEL(Benchmark):
     def world_to_pixel(
         location: np.ndarray,
         town: str,
-        scale: float = 12.0,
     ) -> np.ndarray:
       """Converts CARLA world coordinates to pixel coordinates."""
       assert town in [
@@ -130,6 +129,13 @@ class CARNOVEL(Benchmark):
           "Town03": (-207.43186950683594, -259.27125549316406),
           "Town04": (-565.26904296875, -446.1461181640625),
           "Town05": (-326.0448913574219, -257.8750915527344)
+      }[town]
+      scale = {
+          "Town01": 12.0,
+          "Town02": 12.0,
+          "Town03": 12.0,
+          "Town04": 9.6,
+          "Town05": 12.0,
       }[town]
       return (location - offset) * scale
 

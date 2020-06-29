@@ -21,7 +21,6 @@ from typing import Tuple
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
 from carsuite.baselines.torch import transforms
 from carsuite.baselines.torch.models import MLP
 from carsuite.baselines.torch.models import MobileNetV2

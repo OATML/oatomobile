@@ -16,7 +16,6 @@
 
 import torch
 import torch.nn.functional as F
-
 from carsuite.core.typing import ShapeLike
 
 

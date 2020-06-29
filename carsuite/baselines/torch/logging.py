@@ -19,12 +19,12 @@ from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
+
 import torch
 import torch.nn as nn
 import torchvision
-from torch.utils.tensorboard import SummaryWriter
-
 from carsuite.baselines.torch.typing import ArrayLike
+from torch.utils.tensorboard import SummaryWriter
 
 COLORS = [
     "#0071bc",

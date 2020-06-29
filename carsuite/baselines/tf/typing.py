@@ -17,8 +17,8 @@
 from typing import Union
 
 import numpy as np
-import tensorflow as tf
 
+import tensorflow as tf
 from carsuite.core.typing import Scalar
 
 ArrayLike = Union[Scalar, np.ndarray, tf.Tensor]

@@ -18,9 +18,9 @@ from typing import Mapping
 
 import numpy as np
 import scipy.interpolate
-import torch
 
 import carsuite
+import torch
 from carsuite.baselines.base import SetPointAgent
 from carsuite.baselines.torch.cil.model import BehaviouralModel
 

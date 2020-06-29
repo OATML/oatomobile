@@ -25,7 +25,6 @@ import torch.distributions as D
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-
 from carsuite.baselines.torch import transforms
 from carsuite.baselines.torch.models import MLP
 from carsuite.baselines.torch.models import MobileNetV2

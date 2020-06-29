@@ -17,8 +17,8 @@
 from typing import Union
 
 import numpy as np
-import torch
 
+import torch
 from carsuite.core.typing import Scalar
 
 ArrayLike = Union[Scalar, np.ndarray, torch.Tensor]
