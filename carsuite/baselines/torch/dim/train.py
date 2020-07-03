@@ -130,7 +130,7 @@ def main(argv):
       The processed batch.
     """
     # Sends tensors to `device`.
-    batch = {key: tensor.to(device) for (key, tensor) in batch.items()}
+    batch = {key: tensor.to(device) for (key, tensor) in batch.items() if key != 'name'}
     # Preprocesses batch for the model.
     batch = model.transform(batch)
     return batch
