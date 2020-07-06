@@ -14,8 +14,7 @@
 # ==============================================================================
 
 import os
-import unittest
-
+from importlib import util as import_util
 from setuptools import find_packages
 from setuptools import setup
 
@@ -25,9 +24,15 @@ here = os.path.abspath(os.path.dirname(__file__))
 with open(os.path.join(here, "README.md"), encoding="utf-8") as f:
   long_description = f.read()
 
+# Get the version from metadata.
+spec = import_util.spec_from_file_location("_metadata", "carsuite/_metadata.py")
+_metadata = import_util.module_from_spec(spec)
+spec.loader.exec_module(_metadata)
+version = _metadata.__version__
+
 setup(
     name="carsuite",
-    version="0.0.2",
+    version=version,
     description=
     "The carsuite is a tool for developing and testing driving agents on the CARLA simulator",
     long_description=long_description,
@@ -63,18 +68,19 @@ setup(
             "dm-sonnet==2.0.0",
             "tensorflow==2.2.0",
             "tensorflow_probability==0.9.0",
+            "tensorboard==2.2.0",
         ],
         # Additional requirements for PyTorch baselines.
         "torch": [
             "torch==1.5.1",
             "torchvision==0.6.0",
+            "tensorboard==2.2.0",
         ],
     },
     classifiers=[
         "Development Status :: 3 - Alpha",
-        "Intended Audience :: Science/Researchers",
         "Topic :: Software Development :: Build Tools",
-        "License :: OSI Approved :: Apache 2.0 License",
+        "License :: OSI Approved :: Apache Software License",
         "Operating System :: POSIX :: Linux",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.5",
