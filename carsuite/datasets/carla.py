@@ -599,6 +599,7 @@ class CARLADataset(Dataset):
       modalities: Sequence[str],
       transform: Optional[Callable[[Any], Any]] = None,
       mode: bool = False,
+      only_array: bool = False,
   ) -> "torch.utils.data.Dataset":
     """Implements a data reader and loader for the expert demonstrations.
 
@@ -607,6 +608,8 @@ class CARLADataset(Dataset):
       modalities: The keys of the attributes to fetch.
       transform: The transformations applied on each datum.
       mode: If True, it labels its datum with {FORWARD, STOP, LEFT, RIGHT}.
+      only_array: If True, it removes all the keys that are non-array, useful
+        when training a model and want to run `.to(device)` without errors.
 
     Returns:
       The unbatched `PyTorch` dataset.
@@ -656,6 +659,11 @@ class CARLADataset(Dataset):
             mode=self._mode,
             dataformat="CHW",
         )
+
+        # Filters out non-array keys.
+        for key in list(sample):
+          if not isinstance(sample[key], np.ndarray):
+            sample.pop(key)
 
         # Applies (optional) transformation to all values.
         if self._transform is not None:
