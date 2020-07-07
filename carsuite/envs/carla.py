@@ -169,7 +169,10 @@ class CARLANavEnv(CARLAEnv):
 
     # Get distance from destination.
     if not done:
-      destination = self.simulator._destination
+      destination = cutil.get_spawn_point(
+          self.simulator._world,
+          self.simulator._destination,
+      )
       current_location = observation["location"]
       destination_location = np.asarray(
           [

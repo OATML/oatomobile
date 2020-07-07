@@ -1631,50 +1631,25 @@ class CARLASimulator(simulator.Simulator):
     self._sensors = sensors
     self._fps = fps
     self._client_timeout = client_timeout
+    self._num_vehicles = num_vehicles
+    self._num_pedestrians = num_pedestrians
 
-    # CARLA setup.
-    self.client, self.world, self.frame, self.server = cutil.setup(
-        town=self._town,
-        fps=self._fps,
-        client_timeout=self._client_timeout,
-    )
-    # TODO(filangel): reset if for every `reset` call.
-    self._frame0 = int(self.frame)
-    self.dt = self.world.get_settings().fixed_delta_seconds
-    self._destination = cutil.get_spawn_point(self.world, destination)
+    # CARLA objects (lazy initialization).
+    self._client = None
+    self._world = None
+    self._frame = None
+    self._server = None
+    self._frame0 = None
+    self._dt = None
+    self._vehicles = None
+    self._pedestrians = None
+    self._sensor_suite = None
+    self._hero = None
+    self._destination = destination
+    self._spawn_point = spawn_point
 
     # Randomness controller.
     self._np_random = np.random.RandomState(None)  # pylint: disable=no-member
-
-    # Lazy inilialization.
-    self.vehicles = None
-    self.pedestrians = None
-    self._sensor_suite = None
-
-    # Initializes hero agent.
-    _spawn_point = cutil.get_spawn_point(self.world, spawn_point)
-    self.hero = cutil.spawn_hero(
-        world=self.world,
-        spawn_point=_spawn_point,
-        vehicle_id="vehicle.ford.mustang",
-    )
-    # Initializes the other vehicles.
-    self.vehicles = cutil.spawn_vehicles(
-        world=self.world,
-        num_vehicles=num_vehicles,
-    )
-    # Initializes the pedestrians.
-    self.pedestrians = cutil.spawn_pedestrians(
-        world=self.world,
-        num_pedestrians=num_pedestrians,
-    )
-    # Registers the sensors.
-    self._sensor_suite = simulator.SensorSuite([
-        registry.get_sensor(sensor).default(
-            hero=self.hero,
-            destination=self._destination,
-        ) for sensor in self._sensors
-    ])
 
     # State of the game.
     self._observations = None
@@ -1683,11 +1658,6 @@ class CARLASimulator(simulator.Simulator):
     # Graphics setup.
     self._display = None
     self._clock = None
-
-    # HACK(filangel): due to the bug with the lifted vehicle and
-    # the LocalPlanner, perform K=50 steps in the simulator.
-    for _ in range(50):
-      self.reset()
 
   @property
   def sensor_suite(self) -> simulator.SensorSuite:
@@ -1719,7 +1689,45 @@ class CARLASimulator(simulator.Simulator):
     Returns:
       The initial observations.
     """
-    return self.step(action=None)
+    # CARLA setup.
+    self._client, self._world, self._frame, self._server = cutil.setup(
+        town=self._town,
+        fps=self._fps,
+        client_timeout=self._client_timeout,
+    )
+    self._frame0 = int(self._frame)
+    self._dt = self._world.get_settings().fixed_delta_seconds
+
+    # Initializes hero agent.
+    self.hero = cutil.spawn_hero(
+        world=self._world,
+        spawn_point=cutil.get_spawn_point(self._world, self._spawn_point),
+        vehicle_id="vehicle.ford.mustang",
+    )
+    # Initializes the other vehicles.
+    self._vehicles = cutil.spawn_vehicles(
+        world=self._world,
+        num_vehicles=self._num_vehicles,
+    )
+    # Initializes the pedestrians.
+    self._pedestrians = cutil.spawn_pedestrians(
+        world=self._world,
+        num_pedestrians=self._num_pedestrians,
+    )
+    # Registers the sensors.
+    self._sensor_suite = simulator.SensorSuite([
+        registry.get_sensor(sensor).default(
+            hero=self.hero,
+            destination=cutil.get_spawn_point(self._world, self._destination),
+        ) for sensor in self._sensors
+    ])
+
+    # HACK(filangel): due to the bug with the lifted vehicle and
+    # the LocalPlanner, perform K=50 steps in the simulator.
+    for _ in range(50):
+      obs = self.step(action=None)
+
+    return obs
 
   def step(self, action: simulator.Action) -> simulator.Observations:
     """Makes a step in the simulator, provided an action.
@@ -1738,9 +1746,9 @@ class CARLASimulator(simulator.Simulator):
       self.hero.apply_control(action)
 
     # Advance the simulation by a time step.
-    self.frame = self.world.tick()
+    self._frame = self._world.tick()
     self._time_elapsed = np.asarray(
-        (self.frame - self._frame0) * self.dt,
+        (self._frame - self._frame0) * self._dt,
         dtype=np.float32,
     )
     if self._clock is not None:
@@ -1748,7 +1756,7 @@ class CARLASimulator(simulator.Simulator):
 
     # Retrieves observations from registered sensors.
     self._observations = self._sensor_suite.get_observations(
-        frame=self.frame,
+        frame=self._frame,
         timeout=defaults.QUEUE_TIMEOUT,
     )
 
@@ -1811,10 +1819,10 @@ class CARLASimulator(simulator.Simulator):
     if self.sensor_suite is not None:
       self.sensor_suite.close()
       self._sensor_suite = None
-    settings = self.world.get_settings()
+    settings = self._world.get_settings()
     settings.synchronous_mode = False
-    self.world.apply_settings(settings)
+    self._world.apply_settings(settings)
     logging.debug("Closes the CARLA server with process PID {}".format(
-        self.server.pid))
-    os.killpg(self.server.pid, signal.SIGKILL)
-    atexit.unregister(lambda: os.killpg(self.server.pid, signal.SIGKILL))
+        self._server.pid))
+    os.killpg(self._server.pid, signal.SIGKILL)
+    atexit.unregister(lambda: os.killpg(self._server.pid, signal.SIGKILL))
