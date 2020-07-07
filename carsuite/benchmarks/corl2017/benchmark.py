@@ -56,10 +56,7 @@ for _config in _configs:
 class CORL2017(Benchmark):
   """The CORL2017 benchmark."""
 
-  def load(
-      self,
-      task_id: Text,
-  ) -> CARLANavEnv:
+  def load(self, task_id: Text, **kwargs) -> CARLANavEnv:
     """Loads a CORL2017 task.
 
     Args:
@@ -70,7 +67,7 @@ class CORL2017(Benchmark):
       A task from the benchmark with `task_id`.
     """
     # TODO(filangel): figure out the correct horizon.
-    env = super(CORL2017, self).load(task_id, max_episode_steps=1500)
+    env = super(CORL2017, self).load(task_id, max_episode_steps=1500, **kwargs)
 
     # Terminate on collision.
     env = TerminateOnCollisionWrapper(env)

@@ -57,10 +57,7 @@ for _config in _configs:
 class CARNOVEL(Benchmark):
   """The CARNOVEL benchmark."""
 
-  def load(
-      self,
-      task_id: str,
-  ) -> CARLANavEnv:
+  def load(self, task_id: str, **kwargs) -> CARLANavEnv:
     """Loads a CARNOVEL task.
 
     Args:
@@ -70,7 +67,7 @@ class CARNOVEL(Benchmark):
     Returns:
       A task from the benchmark with `task_id`.
     """
-    env = super(CARNOVEL, self).load(task_id, max_episode_steps=1500)
+    env = super(CARNOVEL, self).load(task_id, max_episode_steps=1500, **kwargs)
 
     # Terminate on collision.
     env = TerminateOnCollisionWrapper(env)
