@@ -8,7 +8,7 @@
 ![PyPI Python Version](https://img.shields.io/pypi/pyversions/carsuite)
 ![PyPI version](https://badge.fury.io/py/carsuite.svg)
 [![arXiv](https://img.shields.io/badge/arXiv-2006.14911-b31b1b.svg)](https://arxiv.org/abs/2006.14911)
-
+[![GitHub license](https://img.shields.io/pypi/l/carsuite)](./LICENSE)
 
 CARSUITE is a library for autonomous driving research.
 CARSUITE strives to expose simple, efficient, well-tuned and readable agents, that serve both as reference implementations of popular algorithms and as strong baselines, while still providing enough flexibility to do novel research.
@@ -31,11 +31,11 @@ while not done:
   # Selects a random action.
   action = environment.action_space.sample()
   observation, reward, done, info = environment.step(action)
-  
+
   # Renders interactive display.
   environment.render(mode="human")
 
-# Book-keeping: closes 
+# Book-keeping: closes
 environment.close()
 ```
 
