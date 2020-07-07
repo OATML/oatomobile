@@ -185,7 +185,7 @@ class CARLADataset(Dataset):
       render: If True it spawn the `PyGame` display.
     """
     from carsuite.baselines.rulebased.autopilot.agent import AutopilotAgent
-    from carsuite.core.benchmark import Benchmark
+    from carsuite.core.loop import EnvironmentLoop
     from carsuite.core.rl import FiniteHorizonWrapper
     from carsuite.core.rl import SaveToDiskWrapper
     from carsuite.envs.carla import CARLAEnv
@@ -212,11 +212,11 @@ class CARLADataset(Dataset):
     agent = AutopilotAgent(environment=env)
 
     # Run a full episode.
-    Benchmark.run_episode(
+    EnvironmentLoop(
         agent=agent,
         environment=env,
         render_mode="human" if render else "none",
-    )
+    ).run()
 
   @staticmethod
   def process(

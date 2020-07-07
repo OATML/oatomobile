@@ -99,11 +99,11 @@ def main(argv):
 
     # Initializes the agent.
     agent = AutopilotAgent(environment=env)
-    carsuite.Benchmark.run_episode(
+    carsuite.EnvironmentLoop(
         agent=agent,
         environment=env,
         render_mode="human" if render else "none",
-    )
+    ).run()
 
   finally:
     # Garbage collector.

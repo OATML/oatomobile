@@ -74,6 +74,7 @@ from carsuite.core.benchmark import Benchmark
 from carsuite.core.dataset import Dataset
 from carsuite.core.dataset import Episode
 from carsuite.core.dataset import tokens
+from carsuite.core.loop import EnvironmentLoop
 from carsuite.core.registry import registry
 from carsuite.core.rl import Env
 from carsuite.core.rl import FiniteHorizonWrapper
@@ -101,6 +102,7 @@ __all__ = (
     "Agent",
     "Benchmark",
     "Dataset",
+    "EnvironmentLoop",
     "Episode",
     "tokens",
     "registry",

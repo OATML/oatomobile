@@ -28,6 +28,7 @@ import tqdm
 from absl import logging
 
 from carsuite.core.agent import Agent
+from carsuite.core.loop import EnvironmentLoop
 from carsuite.core.rl import Env
 from carsuite.core.rl import FiniteHorizonWrapper
 from carsuite.core.rl import Metric
@@ -112,12 +113,12 @@ class Benchmark(abc.ABC):
       agent = agent_fn(environment=env, *args, **kwargs)
 
       # Run episode and record metrics.
-      results = self.run_episode(
+      results = EnvironmentLoop(
           agent=agent,
           environment=env,
           metrics=self.metrics,
           render_mode="human" if render else "none",
-      )
+      ).run(num_episodes=1)
 
       # Dumps results in a CSV file.
       results = {uuid: [value] for (uuid, value) in results.items()}
@@ -126,71 +127,3 @@ class Benchmark(abc.ABC):
           header=True,
           index=False,
       )
-
-  @staticmethod
-  def run_episode(*,
-                  agent: Agent,
-                  environment: Env,
-                  metrics: Optional[Sequence[Metric]] = None,
-                  render_mode: str = "none") -> Optional[Mapping[str, Scalar]]:
-    """Runs an `agent` on an `environment` for a single episode.
-
-    Args:
-      agent: The agent under evaluation.
-      environment: The environment to evaluate on.
-      metrics: Set of metrics to record during episode.
-      render_mode: The render mode, one of {"none", "human", "rgb_array"}.
-
-    Returns:
-      If `metrics` are provided, it returns their final values in a dictionary format.
-    """
-    assert render_mode in ("none", "human", "rgb_array")
-
-    if metrics is not None:
-      # Reset metrics to default values.
-      for metric in metrics:
-        metric.reset()
-
-    try:
-      # Initializes environment.
-      done = False
-      observation = environment.reset()
-      if render_mode is not "none":
-        environment.render(mode=render_mode)
-
-      # Episode loop.
-      while not done:
-        # Get vehicle control.
-        action = agent.act(observation)
-
-        # Progresses the simulation.
-        new_observation, reward, done, _ = environment.step(action)
-        if render_mode is not "none":
-          environment.render(mode=render_mode)
-
-        # Updates the agent belief.
-        agent.update(observation, action, new_observation)
-
-        # Update metrics.
-        if metrics is not None:
-          for metric in metrics:
-            metric.update(observation, action, reward, new_observation)
-
-        # Book-keeping.
-        observation = new_observation
-
-    except Exception as msg:
-      logging.error(msg)
-
-    finally:
-      # Garbage collector.
-      try:
-        environment.close()
-      except NameError:
-        pass
-
-      # Returns the recorded metrics.
-      if metrics is not None:
-        return {metric.uuid: metric.value for metric in metrics}
-      else:
-        return None

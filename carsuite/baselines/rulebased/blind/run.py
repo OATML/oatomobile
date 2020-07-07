@@ -105,11 +105,11 @@ def main(argv):
         environment=env,
         setpoint_index=2,
     )
-    carsuite.Benchmark.run_episode(
+    carsuite.EnvironmentLoop(
         agent=agent,
         environment=env,
         render_mode="human" if render else "none",
-    )
+    ).run()
 
   except Exception as msg:
     logging.error(msg)
