@@ -118,7 +118,7 @@ class Benchmark(abc.ABC):
           environment=env,
           metrics=self.metrics,
           render_mode="human" if render else "none",
-      ).run(num_episodes=1)
+      ).run()
 
       # Dumps results in a CSV file.
       results = {uuid: [value] for (uuid, value) in results.items()}
