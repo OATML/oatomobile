@@ -44,7 +44,7 @@ def setup(
     town: str,
     fps: int = 20,
     server_timestop: float = 20.0,
-    client_timeout: float = 0.0,
+    client_timeout: float = 20.0,
     num_max_restarts: int = 5,
 ) -> Tuple[carla.Client, carla.World, int, subprocess.Popen]:  # pylint: disable=no-member
   """Returns the `CARLA` `server`, `client` and `world`.
