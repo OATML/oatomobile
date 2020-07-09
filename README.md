@@ -1,27 +1,27 @@
-# CARSUITE: A research framework for autonomous driving
+# OATomobile: A research framework for autonomous driving
 
   **[Overview](#overview)**
 | **[Installation](#installation)**
 | **[Baselines]**
 | **[Paper]**
 
-![PyPI Python Version](https://img.shields.io/pypi/pyversions/carsuite)
-![PyPI version](https://badge.fury.io/py/carsuite.svg)
+![PyPI Python Version](https://img.shields.io/pypi/pyversions/oatomobile)
+![PyPI version](https://badge.fury.io/py/oatomobile.svg)
 [![arXiv](https://img.shields.io/badge/arXiv-2006.14911-b31b1b.svg)](https://arxiv.org/abs/2006.14911)
-[![GitHub license](https://img.shields.io/pypi/l/carsuite)](./LICENSE)
+[![GitHub license](https://img.shields.io/pypi/l/oatomobile)](./LICENSE)
 
-CARSUITE is a library for autonomous driving research.
-CARSUITE strives to expose simple, efficient, well-tuned and readable agents, that serve both as reference implementations of popular algorithms and as strong baselines, while still providing enough flexibility to do novel research.
+OATomobile is a library for autonomous driving research.
+OATomobile strives to expose simple, efficient, well-tuned and readable agents, that serve both as reference implementations of popular algorithms and as strong baselines, while still providing enough flexibility to do novel research.
 
 ## Overview
 
-If you just want to get started using CARSUITE quickly, the first thing to know about the framework is that we wrap [CARLA] towns and scenarios in OpenAI [gym]s:
+If you just want to get started using OATomobile quickly, the first thing to know about the framework is that we wrap [CARLA] towns and scenarios in OpenAI [gym]s:
 
 ```python
-import carsuite
+import oatomobile
 
 # Initializes a CARLA environment.
-environment = carsuite.envs.CARLAEnv(town="Town01")
+environment = oatomobile.envs.CARLAEnv(town="Town01")
 
 # Makes an initial observation.
 observation = environment.reset()
@@ -43,20 +43,20 @@ environment.close()
 
 ```python
 # Rule-based agents.
-import carsuite.baselines.rulebased
+import oatomobile.baselines.rulebased
 
-agent = carsuite.baselines.rulebased.AutopilotAgent(environment)
+agent = oatomobile.baselines.rulebased.AutopilotAgent(environment)
 action = agent.act(observation)
 
 # Imitation-learners.
 import torch
-import carsuite.baselines.torch
+import oatomobile.baselines.torch
 
-models = [carsuite.baselines.torch.ImitativeModel() for _ in range(4)]
+models = [oatomobile.baselines.torch.ImitativeModel() for _ in range(4)]
 ckpts = ... # Paths to the model checkpoints.
 for model, ckpt in zip(models, ckpts):
   model.load_state_dict(torch.load(ckpt))
-agent = carsuite.baselines.torch.RIPAgent(
+agent = oatomobile.baselines.torch.RIPAgent(
   environment=environment,
   models=models,
   algorithm="WCM",
@@ -66,7 +66,7 @@ action = agent.act(observation)
 
 ## Installation
 
-We have tested CARSUITE on Python 3.5.
+We have tested OATomobile on Python 3.5.
 
 1.  To install the core libraries (including [CARLA], the backend simulator):
 
@@ -85,24 +85,24 @@ We have tested CARSUITE on Python 3.5.
     easy_install $CARLA_ROOT/PythonAPI/carla/dist/carla-0.9.6-py3.5-linux-x86_64.egg
     ```
 
-1.  To install the CARSUITE core API:
+1.  To install the OATomobile core API:
 
     ```bash
     pip install --upgrade pip setuptools
-    pip install carsuite
+    pip install oatomobile
     ```
 
 1.  To install dependencies for our [PyTorch]- or [TensorFlow]-based agents:
 
     ```bash
-    pip install carsuite[torch]
+    pip install oatomobile[torch]
     # and/or
-    pip install carsuite[tf]
+    pip install oatomobile[tf]
     ```
 
-## Citing CARSUITE
+## Citing OATomobile
 
-If you use CARSUITE in your work, please cite the accompanying
+If you use OATomobile in your work, please cite the accompanying
 [technical report][Paper]:
 
 ```bibtex
@@ -119,7 +119,7 @@ If you use CARSUITE in your work, please cite the accompanying
 }
 ```
 
-[Baselines]: carsuite/baselines/
+[Baselines]: oatomobile/baselines/
 [Examples]: examples/
 [CARLA]: https://carla.readthedocs.io/
 [Paper]: https://arxiv.org/abs/2006.14911

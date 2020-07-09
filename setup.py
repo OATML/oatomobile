@@ -1,4 +1,4 @@
-# Copyright 2020 The CARSUITE Authors. All Rights Reserved.
+# Copyright 2020 The OATomobile Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 
 import os
 from importlib import util as import_util
+
 from setuptools import find_packages
 from setuptools import setup
 
@@ -25,19 +26,22 @@ with open(os.path.join(here, "README.md"), encoding="utf-8") as f:
   long_description = f.read()
 
 # Get the version from metadata.
-spec = import_util.spec_from_file_location("_metadata", "carsuite/_metadata.py")
+spec = import_util.spec_from_file_location(
+    "_metadata",
+    "oatomobile/_metadata.py",
+)
 _metadata = import_util.module_from_spec(spec)
 spec.loader.exec_module(_metadata)
 version = _metadata.__version__
 
 setup(
-    name="carsuite",
+    name="oatomobile",
     version=version,
     description=
-    "The carsuite is a tool for developing and testing driving agents on the CARLA simulator",
+    "The oatomobile is a tool for developing and testing driving agents on the CARLA simulator",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/oatml/carsuite",
+    url="https://github.com/oatml/oatomobile",
     author="Oxford Applied and Theoretical Machine Learning Group",
     author_email="oatml@googlegroups.com",
     license="Apache License, Version 2.0",
@@ -61,7 +65,7 @@ setup(
     tests_require=[
         "pytest",
     ],
-    # See carsuite/baselines/README.md for more information.
+    # See oatomobile/baselines/README.md for more information.
     extras_require={
         # Additional requirements for TensorFlow baselines.
         "tf": [
