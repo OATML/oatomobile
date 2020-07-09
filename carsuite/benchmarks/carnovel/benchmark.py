@@ -146,7 +146,7 @@ class CARNOVEL(Benchmark):
         town = env.simulator._town
         world = env.simulator.world
         origin = env.simulator.hero.get_transform()
-        destination = env.unwrapped.simulator._destination
+        destination = env.unwrapped.simulator.destination
 
         # Gets global plan.
         waypoints, _, distances = cutil.global_plan(

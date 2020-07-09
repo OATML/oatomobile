@@ -15,6 +15,7 @@
 """Defines the core API for benchmarks within `carsuite`."""
 
 import abc
+import functools
 import os
 from typing import Any
 from typing import Callable
@@ -109,12 +110,9 @@ class Benchmark(abc.ABC):
         video_fname = os.path.join(task_dir, "video.gif")
         env = MonitorWrapper(env, output_fname=video_fname)
 
-      # Initialize agent.
-      agent = agent_fn(environment=env, *args, **kwargs)
-
       # Run episode and record metrics.
       results = EnvironmentLoop(
-          agent=agent,
+          agent_fn=functools.partial(agent_fn, *args, **kwargs),
           environment=env,
           metrics=self.metrics,
           render_mode="human" if render else "none",

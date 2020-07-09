@@ -24,7 +24,9 @@ from typing import Generator
 from typing import Mapping
 from typing import Optional
 from typing import Sequence
+from typing import Union
 
+import carla
 import matplotlib.pyplot as plt
 import numpy as np
 import tqdm
@@ -164,6 +166,9 @@ class CARLADataset(Dataset):
       output_dir: str,
       num_vehicles: int,
       num_pedestrians: int,
+      num_steps: int = 1000,
+      spawn_point: Optional[Union[int, carla.Location]] = None,  # pylint: disable=no-member
+      destination: Optional[Union[int, carla.Location]] = None,  # pylint: disable=no-member
       sensors: Sequence[str] = (
           "acceleration",
           "velocity",
@@ -178,9 +183,18 @@ class CARLADataset(Dataset):
 
     Args:
       town: The CARLA town id.
+      output_dir: The full path to the output directory.
       num_vehicles: The number of other vehicles in the simulation.
       num_pedestrians: The number of pedestrians in the simulation.
-      output_dir: The full path to the output directory.
+      num_steps: The number of steps in the simulator.
+      spawn_point: The hero vehicle spawn point. If an int is
+        provided then the index of the spawn point is used.
+        If None, then randomly selects a spawn point every time
+        from the available spawn points of each map.
+      destination: The final destination. If an int is
+        provided then the index of the spawn point is used.
+        If None, then randomly selects a spawn point every time
+        from the available spawn points of each map.
       sensors: The list of recorded sensors.
       render: If True it spawn the `PyGame` display.
     """
@@ -198,6 +212,8 @@ class CARLADataset(Dataset):
     env = CARLAEnv(
         town=town,
         sensors=sensors,
+        spawn_point=spawn_point,
+        destination=destination,
         num_vehicles=num_vehicles,
         num_pedestrians=num_pedestrians,
     )
@@ -206,14 +222,11 @@ class CARLADataset(Dataset):
     # Wraps the environment in an episode handler to store <observation, action> pairs.
     env = SaveToDiskWrapper(env=env, output_dir=output_dir)
     # Caps environment's duration.
-    env = FiniteHorizonWrapper(env=env, max_episode_steps=5000)
-
-    # Initializes an autopilot agent.
-    agent = AutopilotAgent(environment=env)
+    env = FiniteHorizonWrapper(env=env, max_episode_steps=num_steps)
 
     # Run a full episode.
     EnvironmentLoop(
-        agent=agent,
+        agent_fn=AutopilotAgent,
         environment=env,
         render_mode="human" if render else "none",
     ).run()
@@ -245,7 +258,10 @@ class CARLADataset(Dataset):
       # Initializes episode handler.
       episode = Episode(parent_dir=dataset_dir, token=episode_token)
       # Fetches all `.npz` files from the raw dataset.
-      sequence = episode.fetch()
+      try:
+        sequence = episode.fetch()
+      except FileNotFoundError:
+        continue
 
       # Always keep `past_length+future_length+1` files open.
       assert len(sequence) >= past_length + future_length + 1

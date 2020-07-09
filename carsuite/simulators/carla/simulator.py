@@ -1660,6 +1660,25 @@ class CARLASimulator(simulator.Simulator):
     self._clock = None
 
   @property
+  def hero(self) -> carla.Vehicle:  # pylint: disable=no-member
+    """Returns a reference to the ego car."""
+    return self._hero
+
+  @property
+  def spawn_point(self) -> carla.Waypoint:  # pylint: disable=no-member
+    """Returns a reference to the spawn point."""
+    if self._world is None:
+      raise ValueError("Make sure the environment is reset first.")
+    return cutil.get_spawn_point(self._world, self._spawn_point)
+
+  @property
+  def destination(self) -> carla.Waypoint:  # pylint: disable=no-member
+    """Returns a reference to the destination."""
+    if self._world is None:
+      raise ValueError("Make sure the environment is reset first.")
+    return cutil.get_spawn_point(self._world, self._destination)
+
+  @property
   def sensor_suite(self) -> simulator.SensorSuite:
     """Returns a refernce to the suite of sensors."""
     return self._sensor_suite
@@ -1699,9 +1718,9 @@ class CARLASimulator(simulator.Simulator):
     self._dt = self._world.get_settings().fixed_delta_seconds
 
     # Initializes hero agent.
-    self.hero = cutil.spawn_hero(
+    self._hero = cutil.spawn_hero(
         world=self._world,
-        spawn_point=cutil.get_spawn_point(self._world, self._spawn_point),
+        spawn_point=self.spawn_point,
         vehicle_id="vehicle.ford.mustang",
     )
     # Initializes the other vehicles.
@@ -1718,7 +1737,7 @@ class CARLASimulator(simulator.Simulator):
     self._sensor_suite = simulator.SensorSuite([
         registry.get_sensor(sensor).default(
             hero=self.hero,
-            destination=cutil.get_spawn_point(self._world, self._destination),
+            destination=self.destination,
         ) for sensor in self._sensors
     ])
 

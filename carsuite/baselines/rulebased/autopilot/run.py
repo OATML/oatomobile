@@ -97,10 +97,9 @@ def main(argv):
       env = carsuite.SaveToDiskWrapper(env, output_dir=output_dir)
     env = carsuite.MonitorWrapper(env, output_fname="tmp/yoo.gif")
 
-    # Initializes the agent.
-    agent = AutopilotAgent(environment=env)
+    # Runs the environment loop.
     carsuite.EnvironmentLoop(
-        agent=agent,
+        agent_fn=AutopilotAgent,
         environment=env,
         render_mode="human" if render else "none",
     ).run()

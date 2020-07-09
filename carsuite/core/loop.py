@@ -14,6 +14,7 @@
 # ==============================================================================
 """Loop definitions, inspired by DeepMind Acme."""
 
+from typing import Callable
 from typing import Mapping
 from typing import Optional
 from typing import Sequence
@@ -32,13 +33,13 @@ class EnvironmentLoop:
   This takes `Env` and `Agent` instances and coordinates their
   interaction. This can be used as:
 
-    loop = EnvironmentLoop(environment, agent)
+    loop = EnvironmentLoop(environment, agent_fn)
     loop.run()
   """
 
   def __init__(
       self,
-      agent: Agent,
+      agent_fn: Callable[..., Agent],
       environment: Env,
       metrics: Optional[Sequence[Metric]] = None,
       render_mode: str = "none",
@@ -46,7 +47,7 @@ class EnvironmentLoop:
     """Constructs an environment loop.
     
     Args:
-      agent: The agent under evaluation.
+      agent_fn: The agent's construction function that receives each task.
       environment: The environment to evaluate on.
       metrics: Set of metrics to record during episode.
       render_mode: The render mode, one of {"none", "human", "rgb_array"}.
@@ -54,7 +55,7 @@ class EnvironmentLoop:
     assert render_mode in ("none", "human", "rgb_array")
 
     # Internalizes agent and environment.
-    self._agent = agent
+    self._agent_fn = agent_fn
     self._environment = environment
     self._metrics = metrics
     self._render_mode = render_mode
@@ -73,11 +74,13 @@ class EnvironmentLoop:
       observation = self._environment.reset()
       if self._render_mode is not "none":
         self._environment.render(mode=self._render_mode)
+      # Initializes agent.
+      agent = self._agent_fn(environment=self._environment)
 
       # Episode loop.
       while not done:
         # Get vehicle control.
-        action = self._agent.act(observation)
+        action = agent.act(observation)
 
         # Progresses the simulation.
         new_observation, reward, done, _ = self._environment.step(action)
@@ -85,7 +88,7 @@ class EnvironmentLoop:
           self._environment.render(mode=self._render_mode)
 
         # Updates the agent belief.
-        self._agent.update(observation, action, new_observation)
+        agent.update(observation, action, new_observation)
 
         # Update metrics.
         if self._metrics is not None:

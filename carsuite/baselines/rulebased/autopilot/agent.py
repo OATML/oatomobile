@@ -81,9 +81,9 @@ class AutopilotAgent(carsuite.Agent):
     )
 
     # Set agent's dsestination.
-    if hasattr(self._environment.unwrapped.simulator, "_destination"):
+    if hasattr(self._environment.unwrapped.simulator, "destination"):
       self._set_destination(
-          self._environment.unwrapped.simulator._destination.location)
+          self._environment.unwrapped.simulator.destination.location)
 
   def act(
       self,

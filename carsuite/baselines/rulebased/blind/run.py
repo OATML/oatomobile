@@ -18,6 +18,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import functools
 import os
 
 from absl import app
@@ -100,13 +101,9 @@ def main(argv):
     if output_dir is not None:
       env = carsuite.SaveToDiskWrapper(env, output_dir=output_dir)
 
-    # Initializes the agent.
-    agent = BlindAgent(
-        environment=env,
-        setpoint_index=2,
-    )
+    # Runs the environment loop.
     carsuite.EnvironmentLoop(
-        agent=agent,
+        agent_fn=functools.partial(BlindAgent, setpoint_index=2),
         environment=env,
         render_mode="human" if render else "none",
     ).run()
