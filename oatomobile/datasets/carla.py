@@ -251,7 +251,7 @@ class CARLADataset(Dataset):
       past_length: The length of the past trajectory.
       num_frame_skips: The number of frames to skip.
     """
-    from oatomobile.util import carla as cutil
+    from oatomobile.utils import carla as cutil
 
     # Creates the necessary output directory.
     os.makedirs(output_dir, exist_ok=True)
@@ -335,7 +335,7 @@ class CARLADataset(Dataset):
       fname: The absolute path to the datum.
       output_dir: The full path to the output directory.
     """
-    from oatomobile.util import graphics as gutil
+    from oatomobile.utils import graphics as gutil
 
     COLORS = [
         "#0071bc",

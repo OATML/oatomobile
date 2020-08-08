@@ -28,17 +28,17 @@ from typing import Sequence
 from typing import Tuple
 from typing import Union
 
-import carla
 import gym
 import numpy as np
 import pygame
 from absl import logging
 
+import carla
 from oatomobile.core import simulator
 from oatomobile.core.registry import registry
 from oatomobile.simulators.carla import defaults
-from oatomobile.util import carla as cutil
-from oatomobile.util import graphics as gutil
+from oatomobile.utils import carla as cutil
+from oatomobile.utils import graphics as gutil
 
 # All agents are expected to return the same action type.
 CARLAAction = carla.VehicleControl  # pylint: disable=no-member

@@ -17,7 +17,31 @@
 import os
 import sys
 
+# Remove before release.
+import matplotlib
 from absl import logging
+
+# Core API.
+from oatomobile.core.agent import Agent
+from oatomobile.core.benchmark import Benchmark
+from oatomobile.core.dataset import Dataset
+from oatomobile.core.dataset import Episode
+from oatomobile.core.dataset import tokens
+from oatomobile.core.loop import EnvironmentLoop
+from oatomobile.core.registry import registry
+from oatomobile.core.rl import Env
+from oatomobile.core.rl import FiniteHorizonWrapper
+from oatomobile.core.rl import Metric
+from oatomobile.core.rl import MonitorWrapper
+from oatomobile.core.rl import ReturnsMetric
+from oatomobile.core.rl import SaveToDiskWrapper
+from oatomobile.core.rl import StepsMetric
+from oatomobile.core.simulator import Action
+from oatomobile.core.simulator import Observations
+from oatomobile.core.simulator import Sensor
+from oatomobile.core.simulator import SensorSuite
+from oatomobile.core.simulator import SensorTypes
+from oatomobile.core.simulator import Simulator
 
 ###############
 # CARLA SETUP #
@@ -42,7 +66,7 @@ if carla_path is None:
 
 logging.debug("CARLA_ROOT={}".format(carla_path))
 carla_python_api = os.path.join(
-    carla_path or "",
+    carla_path or "$CARLA_ROOT",
     "PythonAPI",
     "carla",
 )
@@ -55,33 +79,10 @@ else:
 # Matplotlib Hack #
 ###################
 
-# Remove before release.
-import matplotlib
 matplotlib.use("Agg")
 
 ###################
 
-# Core API.
-from oatomobile.core.agent import Agent
-from oatomobile.core.benchmark import Benchmark
-from oatomobile.core.dataset import Dataset
-from oatomobile.core.dataset import Episode
-from oatomobile.core.dataset import tokens
-from oatomobile.core.loop import EnvironmentLoop
-from oatomobile.core.registry import registry
-from oatomobile.core.rl import Env
-from oatomobile.core.rl import FiniteHorizonWrapper
-from oatomobile.core.rl import Metric
-from oatomobile.core.rl import MonitorWrapper
-from oatomobile.core.rl import ReturnsMetric
-from oatomobile.core.rl import SaveToDiskWrapper
-from oatomobile.core.rl import StepsMetric
-from oatomobile.core.simulator import Action
-from oatomobile.core.simulator import Observations
-from oatomobile.core.simulator import Sensor
-from oatomobile.core.simulator import SensorSuite
-from oatomobile.core.simulator import SensorTypes
-from oatomobile.core.simulator import Simulator
 
 # Public API.
 __all__ = (
@@ -108,10 +109,10 @@ __all__ = (
 )
 
 #  ASCII art borrowed from dm-haiku.
-#  __________________________________________
-# / Please don't use these symbols they      \
+#  ____________________________________________
+# / Please don't use these symbols they        \
 # \ are not part of the OATomobile public API. /
-#  ------------------------------------------
+#  --------------------------------------------
 #         \   ^__^
 #          \  (oo)\_______
 #             (__)\       )\/\

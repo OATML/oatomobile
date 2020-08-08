@@ -12,13 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Type definitions used in baselines."""
+"""OATomobile loggers."""
 
-from typing import Union
-
-import numpy as np
-
-import tensorflow as tf
-from oatomobile.core.typing import Scalar
-
-ArrayLike = Union[Scalar, np.ndarray, tf.Tensor]
+from oatomobile.utils.loggers.base import Logger
+from oatomobile.utils.loggers.base import LoggingData
+from oatomobile.utils.loggers.csv import CSVLogger
+from oatomobile.utils.loggers.terminal import TerminalLogger

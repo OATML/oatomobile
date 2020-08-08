@@ -12,13 +12,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Type definitions used in baselines."""
+"""Base logger, borrowed from DeepMind"s Acme."""
 
-from typing import Union
+import abc
+from typing import Any
+from typing import Mapping
 
-import numpy as np
+LoggingData = Mapping[str, Any]
 
-import tensorflow as tf
-from oatomobile.core.typing import Scalar
 
-ArrayLike = Union[Scalar, np.ndarray, tf.Tensor]
+class Logger(abc.ABC):
+  """A logger has a `write` method."""
+
+  @abc.abstractmethod
+  def write(self, data: LoggingData):
+    """Writes `data` to destination (file, terminal, database, etc)."""
+
+
+class NoOpLogger(Logger):
+  """Simple Logger which does nothing and outputs no logs.
+
+  This should be used sparingly, but it can prove useful if we want to
+  quiet an individual component and have it produce no logging
+  whatsoever.
+  """
+
+  def write(self, data: LoggingData):
+    pass

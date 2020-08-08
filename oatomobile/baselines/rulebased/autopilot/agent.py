@@ -20,8 +20,13 @@ from typing import Any
 from typing import Optional
 from typing import Tuple
 
-import carla
 from absl import logging
+
+import carla
+import oatomobile
+from oatomobile.simulators.carla import defaults
+from oatomobile.utils import carla as cutil
+
 try:
   from agents.navigation.local_planner import \
       LocalPlanner  # pylint: disable=import-error
@@ -34,9 +39,6 @@ except ImportError:
                     "make sure the environment variable CARLA_ROOT is provided "
                     "and that the PythonAPI is `easy_install`ed")
 
-import oatomobile
-from oatomobile.simulators.carla import defaults
-from oatomobile.util import carla as cutil
 
 
 class AutopilotAgent(oatomobile.Agent):

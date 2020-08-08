@@ -250,7 +250,7 @@ class MonitorWrapper(gym.Wrapper):
 
   def _record_frame(self):
     """Appends a `frame` in the video."""
-    from oatomobile.util import graphics as gutil
+    from oatomobile.utils import graphics as gutil
     frame = gutil.downsample(
         image=self.render(mode="rgb_array"),
         factor=self._downsample_factor,

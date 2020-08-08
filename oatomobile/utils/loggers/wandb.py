@@ -12,13 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Type definitions used in baselines."""
+"""Utilities for logging to Weights & Biases."""
 
-from typing import Union
+from absl import flags
 
-import numpy as np
+import wandb
+from oatomobile.utils.loggers import base
 
-import tensorflow as tf
-from oatomobile.core.typing import Scalar
+wandb.init(project="oatomobile", config=flags.FLAGS)
 
-ArrayLike = Union[Scalar, np.ndarray, tf.Tensor]
+
+class WandBLogger(base.Logger):
+  """Logs to a `wandb` dashboard."""
+
+  def write(self, values: base.LoggingData) -> None:
+    wandb.log(values)

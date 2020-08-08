@@ -34,10 +34,11 @@ from typing import Sequence
 from typing import Tuple
 from typing import Union
 
-import carla
 import numpy as np
 import transforms3d.euler
 from absl import logging
+
+import carla
 
 
 def setup(

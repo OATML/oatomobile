@@ -35,7 +35,7 @@ class MobileNetV2(nn.Module):
       with shape `[B, D]`.
     logabsdet: The log absolute determinant of the Jacobian,
       with shape `[B]`.
-    """
+  """
 
   def __init__(
       self,

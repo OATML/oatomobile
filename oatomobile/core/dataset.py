@@ -24,7 +24,7 @@ from typing import Union
 
 import numpy as np
 
-from oatomobile.util.uuid import unique_token_generator
+from oatomobile.utils.uuid import unique_token_generator
 
 tokens = unique_token_generator()
 

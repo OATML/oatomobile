@@ -20,11 +20,11 @@ from typing import Optional
 from typing import Sequence
 from typing import Union
 
-import carla
 import gym
 import numpy as np
 from absl import logging
 
+import carla
 from oatomobile.core.registry import registry
 from oatomobile.core.rl import Env
 from oatomobile.core.rl import Metric
@@ -33,7 +33,7 @@ from oatomobile.core.simulator import Observations
 from oatomobile.simulators.carla import defaults
 from oatomobile.simulators.carla.simulator import CARLAAction
 from oatomobile.simulators.carla.simulator import CARLASimulator
-from oatomobile.util import carla as cutil
+from oatomobile.utils import carla as cutil
 
 
 class CARLAEnv(Env):

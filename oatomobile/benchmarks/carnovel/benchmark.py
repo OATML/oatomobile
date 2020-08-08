@@ -106,7 +106,7 @@ class CARNOVEL(Benchmark):
     import matplotlib.pyplot as plt
     import numpy as np
     import tqdm
-    from oatomobile.util import carla as cutil
+    from oatomobile.utils import carla as cutil
 
     def world_to_pixel(
         location: np.ndarray,

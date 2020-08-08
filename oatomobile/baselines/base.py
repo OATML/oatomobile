@@ -117,7 +117,7 @@ class SetPointAgent(oatomobile.Agent):
           **kwargs) -> oatomobile.Action:
     """Takes in an observation, samples from agent's policy, returns an
     action."""
-    from oatomobile.util import carla as cutil
+    from oatomobile.utils import carla as cutil
 
     # Current measurements used for local2world2local transformations.
     current_location = observation["location"]
