@@ -61,6 +61,7 @@ setup(
         "imageio==2.8.0",
         "tabulate==0.8.7",
         "scikit-image==0.15.0",
+        "dm-tree==0.1.5",
     ],
     tests_require=[
         "pytest",

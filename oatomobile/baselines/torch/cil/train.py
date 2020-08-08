@@ -27,10 +27,10 @@ from absl import flags
 from absl import logging
 
 from oatomobile.baselines.torch.cil.model import BehaviouralModel
-from oatomobile.baselines.torch.logging import Checkpointer
-from oatomobile.baselines.torch.logging import TensorBoardWriter
-from oatomobile.baselines.torch.typing import ArrayLike
 from oatomobile.datasets.carla import CARLADataset
+from oatomobile.torch import types
+from oatomobile.torch.loggers import TensorBoardLogger
+from oatomobile.torch.savers import Checkpointer
 
 logging.set_verbosity(logging.DEBUG)
 FLAGS = flags.FLAGS
@@ -116,10 +116,10 @@ def main(argv):
       lr=learning_rate,
       weight_decay=weight_decay,
   )
-  writer = TensorBoardWriter(log_dir=log_dir)
+  writer = TensorBoardLogger(log_dir=log_dir)
   checkpointer = Checkpointer(model=model, ckpt_dir=ckpt_dir)
 
-  def transform(batch: Mapping[str, ArrayLike]) -> Mapping[str, torch.Tensor]:
+  def transform(batch: Mapping[str, types.Array]) -> Mapping[str, torch.Tensor]:
     """Preprocesses a batch for the model.
 
     Args:
@@ -237,7 +237,7 @@ def main(argv):
   def write(
       model: BehaviouralModel,
       dataloader: torch.utils.data.DataLoader,
-      writer: TensorBoardWriter,
+      writer: TensorBoardLogger,
       split: str,
       loss: torch.Tensor,
       epoch: int,

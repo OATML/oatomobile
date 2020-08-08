@@ -153,3 +153,6 @@ tmp
 
 # Stored data.
 data
+
+# Configurations.
+Makefile

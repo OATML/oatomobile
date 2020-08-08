@@ -12,4 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Public API for `oatomobile.baselines.tf`."""
+"""Type definitions used in baselines."""
+
+from typing import Any
+from typing import Iterable
+from typing import Mapping
+from typing import Union
+
+import numpy as np
+import torch
+
+from oatomobile import types
+
+Shape = types.Shape
+Tensor = torch.Tensor
+Array = Union[types.Scalar, np.ndarray, Tensor]
+NestedArray = Union[Array, Iterable["NestedArray"], Mapping[Any, "NestedArray"]]
+NestedTensor = Union[Tensor, Iterable["NestedTensor"], Mapping[Any,
+                                                               "NestedTensor"]]

@@ -12,19 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Helper functions for logging, saving and loading models in `PyTorch`."""
+"""Utility classes for logging on TensorBoard."""
 
 import os
 from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
-import torch
-import torch.nn as nn
-import torchvision
 from torch.utils.tensorboard import SummaryWriter
 
-from oatomobile.baselines.torch.typing import ArrayLike
+from oatomobile.torch import types
 
 COLORS = [
     "#0071bc",
@@ -36,43 +33,8 @@ COLORS = [
     "#a1132e",
 ]
 
-# Determines device, accelerator.
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # pylint: disable=no-member
 
-
-class Checkpointer:
-  """A simple `PyTorch` model load/save wrapper."""
-
-  def __init__(
-      self,
-      model: nn.Module,
-      ckpt_dir: str,
-  ) -> None:
-    """Constructs a simple load/save checkpointer."""
-    self._model = model
-    self._ckpt_dir = ckpt_dir
-    os.makedirs(self._ckpt_dir, exist_ok=True)
-
-  def save(
-      self,
-      epoch: int,
-  ) -> str:
-    """Saves the model to the `ckpt_dir/epoch/model.pt` file."""
-    ckpt_path = os.path.join(self._ckpt_dir, "model-{}.pt".format(epoch))
-    torch.save(self._model.state_dict(), ckpt_path)
-    return ckpt_path
-
-  def load(
-      self,
-      epoch: int,
-  ) -> nn.Module:
-    """Loads the model from the `ckpt_dir/epoch/model.pt` file."""
-    ckpt_path = os.path.join(self._ckpt_dir, "model-{}.pt".format(epoch))
-    self._model.load_state_dict(torch.load(ckpt_path, map_location=device))
-    return self._model
-
-
-class TensorBoardWriter:
+class TensorBoardLogger:
   """A simple `Pytorch`-friendly `TensorBoard` wrapper."""
 
   def __init__(
@@ -95,9 +57,9 @@ class TensorBoardWriter:
       split: str,
       loss: float,
       global_step: int,
-      overhead_features: Optional[ArrayLike] = None,
-      predictions: Optional[ArrayLike] = None,
-      ground_truth: Optional[ArrayLike] = None,
+      overhead_features: Optional[types.Array] = None,
+      predictions: Optional[types.Array] = None,
+      ground_truth: Optional[types.Array] = None,
   ) -> None:
     """Logs the scalar loss and visualizes predictions for qualitative
     inspection."""

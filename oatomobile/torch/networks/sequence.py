@@ -21,8 +21,8 @@ import torch.distributions as D
 import torch.nn as nn
 import torch.nn.functional as F
 
-from oatomobile.baselines.torch.networks.mlp import MLP
-from oatomobile.core.typing import ShapeLike
+from oatomobile.torch import types
+from oatomobile.torch.networks.mlp import MLP
 
 
 class AutoregressiveFlow(nn.Module):
@@ -30,7 +30,7 @@ class AutoregressiveFlow(nn.Module):
 
   def __init__(
       self,
-      output_shape: ShapeLike = (4, 2),
+      output_shape: types.Shape = (4, 2),
       hidden_size: int = 64,
   ):
     """Constructs a simple autoregressiv flow-based sequence generator.

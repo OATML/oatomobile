@@ -26,12 +26,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-from oatomobile.baselines.torch import transforms
-from oatomobile.baselines.torch.networks.mlp import MLP
-from oatomobile.baselines.torch.networks.perception import MobileNetV2
-from oatomobile.baselines.torch.networks.sequence import AutoregressiveFlow
-from oatomobile.baselines.torch.typing import ArrayLike
-from oatomobile.core.typing import ShapeLike
+from oatomobile.torch import transforms
+from oatomobile.torch import types
+from oatomobile.torch.networks.mlp import MLP
+from oatomobile.torch.networks.perception import MobileNetV2
+from oatomobile.torch.networks.sequence import AutoregressiveFlow
 
 
 class ImitativeModel(nn.Module):
@@ -39,7 +38,7 @@ class ImitativeModel(nn.Module):
 
   def __init__(
       self,
-      output_shape: ShapeLike = (4, 2),
+      output_shape: types.Shape = (4, 2),
   ) -> None:
     """Constructs a simple imitative model.
 
@@ -221,7 +220,7 @@ class ImitativeModel(nn.Module):
 
   def transform(
       self,
-      sample: Mapping[str, ArrayLike],
+      sample: Mapping[str, types.Array],
   ) -> Mapping[str, torch.Tensor]:
     """Prepares variables for the interface of the model.
 

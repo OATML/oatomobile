@@ -17,7 +17,7 @@
 import torch
 import torch.nn.functional as F
 
-from oatomobile.core.typing import ShapeLike
+from oatomobile.torch import types
 
 
 def downsample_target(
@@ -33,7 +33,7 @@ def downsample_target(
 
 def downsample_visual_features(
     visual_features: torch.Tensor,
-    output_shape: ShapeLike,
+    output_shape: types.Shape,
 ) -> torch.Tensor:
   """Downsamples the visual features."""
   return F.interpolate(

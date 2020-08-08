@@ -28,13 +28,13 @@ import pandas as pd
 import tqdm
 from absl import logging
 
+from oatomobile import types
 from oatomobile.core.agent import Agent
 from oatomobile.core.loop import EnvironmentLoop
 from oatomobile.core.rl import Env
 from oatomobile.core.rl import FiniteHorizonWrapper
 from oatomobile.core.rl import Metric
 from oatomobile.core.rl import MonitorWrapper
-from oatomobile.core.typing import Scalar
 
 
 class Benchmark(abc.ABC):

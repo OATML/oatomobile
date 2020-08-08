@@ -12,18 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Logging helper functions for `TensorFlow` baselines."""
+"""Utility classes for logging on TensorBoard."""
 
 import os
-from typing import Optional
 
-import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
-
-import sonnet as snt
 import tensorflow as tf
-from oatomobile.baselines.tf.typing import ArrayLike
+
+from oatomobile.tf import types
 
 COLORS = [
     "#0071bc",
@@ -36,7 +33,7 @@ COLORS = [
 ]
 
 
-class TensorBoardWriter:
+class TensorBoardLogger:
   """A simple `TensorFlow`-friendly `TensorBoard` wrapper."""
 
   def __init__(
@@ -58,9 +55,9 @@ class TensorBoardWriter:
       self,
       split: str,
       loss: float,
-      overhead_features: ArrayLike,
-      predictions: ArrayLike,
-      ground_truth: ArrayLike,
+      overhead_features: types.Array,
+      predictions: types.Array,
+      ground_truth: types.Array,
       global_step: int,
   ) -> None:
     """Logs the scalar loss and visualizes predictions for qualitative
@@ -87,7 +84,7 @@ class TensorBoardWriter:
 
       # Visualizes the predictions.
       raw = list()
-      for t, (
+      for _, (
           o_t,
           p_t,
           g_t,

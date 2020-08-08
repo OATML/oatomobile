@@ -20,10 +20,10 @@ from typing import Optional
 
 from absl import logging
 
-from oatomobile.core.typing import Singleton
+from oatomobile import types
 
 
-class Registry(metaclass=Singleton):
+class Registry(metaclass=types.Singleton):
   """The `oatomobile` singleton registry object definition."""
 
   mapping = collections.defaultdict(dict)

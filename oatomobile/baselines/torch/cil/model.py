@@ -22,10 +22,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from oatomobile.baselines.torch import transforms
-from oatomobile.baselines.torch.models import MLP
-from oatomobile.baselines.torch.networks.perception import MobileNetV2
-from oatomobile.baselines.torch.typing import ArrayLike
+from oatomobile.torch import transforms
+from oatomobile.torch import types
+from oatomobile.torch.networks.mlp import MLP
+from oatomobile.torch.networks.perception import MobileNetV2
 
 
 class BehaviouralModel(nn.Module):
@@ -128,7 +128,7 @@ class BehaviouralModel(nn.Module):
 
   def transform(
       self,
-      sample: Mapping[str, ArrayLike],
+      sample: Mapping[str, types.Array],
   ) -> Mapping[str, torch.Tensor]:
     """Prepares variables for the interface of the model.
 

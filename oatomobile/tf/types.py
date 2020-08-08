@@ -14,11 +14,19 @@
 # ==============================================================================
 """Type definitions used in baselines."""
 
+from typing import Any
+from typing import Iterable
+from typing import Mapping
 from typing import Union
 
 import numpy as np
-
 import tensorflow as tf
-from oatomobile.core.typing import Scalar
 
-ArrayLike = Union[Scalar, np.ndarray, tf.Tensor]
+from oatomobile import types
+
+Shape = types.Shape
+Tensor = tf.Tensor
+Array = Union[types.Scalar, np.ndarray, Tensor]
+NestedArray = Union[Array, Iterable["NestedArray"], Mapping[Any, "NestedArray"]]
+NestedTensor = Union[Tensor, Iterable["NestedTensor"], Mapping[Any,
+                                                               "NestedTensor"]]

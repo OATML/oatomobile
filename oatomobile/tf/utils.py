@@ -12,13 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Type definitions used in baselines."""
+"""Utilities for nested data structures involving NumPy and TensorFlow 2.X."""
 
-from typing import Union
+import tensorflow as tf
+import tree
 
-import numpy as np
-import torch
+from oatomobile.tf import types
 
-from oatomobile.core.typing import Scalar
 
-ArrayLike = Union[Scalar, np.ndarray, torch.Tensor]
+def add_batch_dim(nest: types.NestedArray) -> types.NestedTensor:
+  """Adds a batch dimension to each leaf of a nested structure of Tensors."""
+  return tree.map_structure(lambda x: tf.expand_dims(x, axis=0), nest)
+
+
+def squeeze_batch_dim(nest: types.NestedTensor) -> types.NestedTensor:
+  """Squeezes out a batch dimension from each leaf of a nested structure."""
+  return tree.map_structure(lambda x: tf.squeeze(x, axis=0), nest)

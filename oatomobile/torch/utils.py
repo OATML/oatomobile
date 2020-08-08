@@ -12,18 +12,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Utilities for logging to Weights & Biases."""
+"""Utilities for nested data structures involving NumPy and PyTorch."""
 
-import wandb
-from absl import flags
+import torch
+import torch.nn.functional as F
+import tree
 
-from oatomobile.utils.loggers import base
-
-wandb.init(project="oatomobile", config=flags.FLAGS)
+from oatomobile.torch import types
 
 
-class WandBLogger(base.Logger):
-  """Logs to a `wandb` dashboard."""
+def add_batch_dim(nest: types.NestedArray) -> types.NestedTensor:
+  """Adds a batch dimension to each leaf of a nested structure of Tensors."""
+  return tree.map_structure(lambda x: x.unsqueeze(dim=0), nest)
 
-  def write(self, values: base.LoggingData) -> None:
-    wandb.log(values)
+
+def squeeze_batch_dim(nest: types.Array) -> types.NestedTensor:
+  """Squeezes out a batch dimension from each leaf of a nested structure."""
+  return tree.map_structure(lambda x: x.squeeze(dim=0), nest)

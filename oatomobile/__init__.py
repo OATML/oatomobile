@@ -17,11 +17,13 @@
 import os
 import sys
 
-# Remove before release.
-import matplotlib
 from absl import logging
 
+# Make __version__ accessible.
+from oatomobile._metadata import __version__
+
 # Core API.
+from oatomobile import types
 from oatomobile.core.agent import Agent
 from oatomobile.core.benchmark import Benchmark
 from oatomobile.core.dataset import Dataset
@@ -79,10 +81,11 @@ else:
 # Matplotlib Hack #
 ###################
 
+# Remove before release.
+import matplotlib
 matplotlib.use("Agg")
 
 ###################
-
 
 # Public API.
 __all__ = (

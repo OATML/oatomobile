@@ -21,10 +21,10 @@ from typing import Sequence
 
 from absl import logging
 
+from oatomobile import types
 from oatomobile.core.agent import Agent
 from oatomobile.core.rl import Env
 from oatomobile.core.rl import Metric
-from oatomobile.core.typing import Scalar
 
 
 class EnvironmentLoop:
@@ -60,7 +60,7 @@ class EnvironmentLoop:
     self._metrics = metrics
     self._render_mode = render_mode
 
-  def run(self) -> Optional[Mapping[str, Scalar]]:
+  def run(self) -> Optional[Mapping[str, types.Scalar]]:
     """Perform the run loop.
 
     Returns:

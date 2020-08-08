@@ -12,26 +12,3 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Core data structures and type definitions."""
-
-from typing import Sequence
-from typing import Union
-
-import numpy as np
-
-
-class Singleton(type):
-  """Implements the singleton pattern."""
-
-  _instances = {}
-
-  def __call__(cls, *args, **kwargs):
-    """Checks if singleton exists, creates one if not else return it."""
-    if cls not in cls._instances:
-      cls._instances[cls] = super(Singleton, cls).__call__(*args, **kwargs)
-    return cls._instances[cls]
-
-
-Shape = Sequence[int]
-ShapeLike = Union[int, Shape]
-Scalar = Union[float, int]

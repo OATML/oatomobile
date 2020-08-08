@@ -12,18 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Utilities for logging to Weights & Biases."""
+"""Useful PyTorch network definitions."""
 
-import wandb
-from absl import flags
-
-from oatomobile.utils.loggers import base
-
-wandb.init(project="oatomobile", config=flags.FLAGS)
-
-
-class WandBLogger(base.Logger):
-  """Logs to a `wandb` dashboard."""
-
-  def write(self, values: base.LoggingData) -> None:
-    wandb.log(values)
+from oatomobile.torch.networks.mlp import MLP
+from oatomobile.torch.networks.perception import MobileNetV2
+from oatomobile.torch.networks.sequence import AutoregressiveFlow

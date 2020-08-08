@@ -40,7 +40,6 @@ except ImportError:
                     "and that the PythonAPI is `easy_install`ed")
 
 
-
 class AutopilotAgent(oatomobile.Agent):
   """An autopilot agent, based on the official implementation of
   `carla.PythonAPI.agents.navigation.basic_agent.BasicAgent`"""
