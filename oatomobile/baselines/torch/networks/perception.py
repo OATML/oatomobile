@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Module and layer definitions used across the `PyTorch` models."""
+"""Perception (e.g., LIDAR) feature extractors."""
 
 from typing import Callable
 from typing import Optional
@@ -23,19 +23,7 @@ import torch.nn as nn
 
 
 class MobileNetV2(nn.Module):
-  """A `PyTorch Hub` MobileNetV2 model wrapper.
-
-  Args:
-      x: Samples from the base distribution, with shape `[B, D]`.
-      z: The contextual parameters of the conditional density estimator, with
-        shape `[B, K]`.
-
-  Returns:
-    y: The sampels from the push-forward distribution,
-      with shape `[B, D]`.
-    logabsdet: The log absolute determinant of the Jacobian,
-      with shape `[B]`.
-    """
+  """A `PyTorch Hub` MobileNetV2 model wrapper."""
 
   def __init__(
       self,

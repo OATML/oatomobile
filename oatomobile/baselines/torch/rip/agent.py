@@ -82,7 +82,7 @@ class RIPAgent(SetPointAgent):
     batch_size = observation["visual_features"].shape[0]
 
     # Sets initial sample to base distribution's mean.
-    x = self._models[0]._base_dist.mean.clone().detach().repeat(
+    x = self._models[0]._decoder._base_dist.mean.clone().detach().repeat(
         batch_size, 1).view(
             batch_size,
             *self._models[0]._output_shape,

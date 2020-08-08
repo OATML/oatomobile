@@ -195,7 +195,7 @@ def main(argv):
         is_at_traffic_light=batch["is_at_traffic_light"],
         traffic_light_state=batch["traffic_light_state"],
     )
-    _, log_prob, logabsdet = model._inverse(y=y, z=z)
+    _, log_prob, logabsdet = model._decoder._inverse(y=y, z=z)
 
     # Calculates loss (NLL).
     loss = -torch.mean(log_prob - logabsdet, dim=0)  # pylint: disable=no-member
@@ -240,7 +240,7 @@ def main(argv):
         is_at_traffic_light=batch["is_at_traffic_light"],
         traffic_light_state=batch["traffic_light_state"],
     )
-    _, log_prob, logabsdet = model._inverse(
+    _, log_prob, logabsdet = model._decoder._inverse(
         y=batch["player_future"][..., :2],
         z=z,
     )

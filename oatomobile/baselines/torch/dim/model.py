@@ -27,8 +27,9 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 from oatomobile.baselines.torch import transforms
-from oatomobile.baselines.torch.models import MLP
-from oatomobile.baselines.torch.models import MobileNetV2
+from oatomobile.baselines.torch.networks.mlp import MLP
+from oatomobile.baselines.torch.networks.perception import MobileNetV2
+from oatomobile.baselines.torch.networks.sequence import AutoregressiveFlow
 from oatomobile.baselines.torch.typing import ArrayLike
 from oatomobile.core.typing import ShapeLike
 
@@ -40,7 +41,7 @@ class ImitativeModel(nn.Module):
       self,
       output_shape: ShapeLike = (4, 2),
   ) -> None:
-    """Constructs a simple behavioural cloning model.
+    """Constructs a simple imitative model.
 
     Args:
       output_shape: The shape of the base and
@@ -48,12 +49,6 @@ class ImitativeModel(nn.Module):
     """
     super(ImitativeModel, self).__init__()
     self._output_shape = output_shape
-
-    # Initialises the base distribution.
-    self._base_dist = D.MultivariateNormal(
-        loc=torch.zeros(self._output_shape[-2] * self._output_shape[-1]),  # pylint: disable=no-member
-        scale_tril=torch.eye(self._output_shape[-2] * self._output_shape[-1]),  # pylint: disable=no-member
-    )
 
     # The convolutional encoder model.
     self._encoder = MobileNetV2(num_classes=128, in_channels=2)
@@ -68,24 +63,15 @@ class ImitativeModel(nn.Module):
     )
 
     # The decoder recurrent network used for the sequence generation.
-    self._decoder = nn.GRUCell(input_size=2, hidden_size=64)
-
-    # The output head.
-    self._locscale = MLP(
-        input_size=64,
-        output_sizes=[32, 4],
-        activation_fn=nn.ReLU,
-        dropout_rate=None,
-        activate_final=False,
+    self._decoder = AutoregressiveFlow(
+        output_shape=self._output_shape,
+        hidden_size=64,
     )
 
   def to(self, *args, **kwargs):
     """Handles non-parameter tensors when moved to a new device."""
     self = super().to(*args, **kwargs)
-    self._base_dist = D.MultivariateNormal(
-        loc=self._base_dist.mean.to(*args, **kwargs),
-        scale_tril=self._base_dist.scale_tril.to(*args, **kwargs),
-    )
+    self._decoder = self._decoder.to(*args, **kwargs)
     return self
 
   def forward(
@@ -112,10 +98,11 @@ class ImitativeModel(nn.Module):
     batch_size = context["visual_features"].shape[0]
 
     # Sets initial sample to base distribution's mean.
-    x = self._base_dist.sample().clone().detach().repeat(batch_size, 1).view(
-        batch_size,
-        *self._output_shape,
-    )
+    x = self._decoder._base_dist.sample().clone().detach().repeat(
+        batch_size, 1).view(
+            batch_size,
+            *self._output_shape,
+        )
     x.requires_grad = True
 
     # The contextual parameters, caches for efficiency.
@@ -132,9 +119,9 @@ class ImitativeModel(nn.Module):
       # Resets optimizer's gradients.
       optimizer.zero_grad()
       # Operate on `y`-space.
-      y, _ = self._forward(x=x, z=z)
+      y, _ = self._decoder._forward(x=x, z=z)
       # Calculates imitation prior.
-      _, log_prob, logabsdet = self._inverse(y=y, z=z)
+      _, log_prob, logabsdet = self._decoder._inverse(y=y, z=z)
       imitation_prior = torch.mean(log_prob - logabsdet)  # pylint: disable=no-member
       # Calculates goal likelihodd.
       goal_likelihood = 0.0
@@ -150,7 +137,7 @@ class ImitativeModel(nn.Module):
         x_best = x.clone()
         loss_best = loss.clone()
 
-    y, _ = self._forward(x=x_best, z=z)
+    y, _ = self._decoder._forward(x=x_best, z=z)
 
     return y
 
@@ -231,129 +218,6 @@ class ImitativeModel(nn.Module):
     visual_features = self._merger(visual_features)
 
     return visual_features
-
-  def _forward(
-      self,
-      x: torch.Tensor,
-      z: torch.Tensor,
-  ) -> Tuple[torch.Tensor, torch.Tensor]:
-    """Transforms samples from the base distribution to the data distribution.
-
-    Args:
-      x: Samples from the base distribution, with shape `[B, D]`.
-      z: The contextual parameters of the conditional density estimator, with
-        shape `[B, K]`.
-
-    Returns:
-      y: The sampels from the push-forward distribution,
-        with shape `[B, D]`.
-      logabsdet: The log absolute determinant of the Jacobian,
-        with shape `[B]`.
-    """
-
-    # Output containers.
-    y = list()
-    scales = list()
-
-    # Initial input variable.
-    y_tm1 = torch.zeros(  # pylint: disable=no-member
-        size=(z.shape[0], self._output_shape[-1]),
-        dtype=z.dtype,
-    ).to(z.device)
-
-    for t in range(x.shape[-2]):
-      x_t = x[:, t, :]
-
-      # Unrolls the GRU.
-      z = self._decoder(y_tm1, z)
-
-      # Predicts the location and scale of the MVN distribution.
-      dloc_scale = self._locscale(z)
-      dloc = dloc_scale[..., :2]
-      scale = F.softplus(dloc_scale[..., 2:]) + 1e-3
-
-      # Data distribution corresponding sample.
-      y_t = (y_tm1 + dloc) + scale * x_t
-
-      # Update containers.
-      y.append(y_t)
-      scales.append(scale)
-      y_tm1 = y_t
-
-    # Prepare tensors, reshape to [B, T, 2].
-    y = torch.stack(y, dim=-2)  # pylint: disable=no-member
-    scales = torch.stack(scales, dim=-2)  # pylint: disable=no-member
-
-    # Log absolute determinant of Jacobian.
-    logabsdet = torch.log(torch.abs(torch.prod(scales, dim=-2)))  # pylint: disable=no-member
-    logabsdet = torch.sum(logabsdet, dim=-1)  # pylint: disable=no-member
-
-    return y, logabsdet
-
-  def _inverse(
-      self,
-      y: torch.Tensor,
-      z: torch.Tensor,
-  ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-    """Transforms samples from the data distribution to the base distribution.
-
-    Args:
-      y: Samples from the data distribution, with shape `[B, D]`.
-      z: The contextual parameters of the conditional density estimator, with shape
-        `[B, K]`.
-
-    Returns:
-      x: The sampels from the base distribution,
-        with shape `[B, D]`.
-      log_prob: The log-likelihood of the samples under
-        the base distibution probability, with shape `[B]`.
-      logabsdet: The log absolute determinant of the Jacobian,
-        with shape `[B]`.
-    """
-
-    # Output containers.
-    x = list()
-    scales = list()
-
-    # Initial input variable.
-    y_tm1 = torch.zeros(  # pylint: disable=no-member
-        size=(z.shape[0], self._output_shape[-1]),
-        dtype=z.dtype,
-    ).to(z.device)
-
-    for t in range(y.shape[-2]):
-      y_t = y[:, t, :]
-
-      # Unrolls the GRU.
-      z = self._decoder(y_tm1, z)
-
-      # Predicts the location and scale of the MVN distribution.
-      dloc_scale = self._locscale(z)
-      dloc = dloc_scale[..., :2]
-      scale = F.softplus(dloc_scale[..., 2:]) + 1e-3
-
-      # Base distribution corresponding sample.
-      x_t = (y_t - (y_tm1 + dloc)) / scale
-
-      # Update containers.
-      x.append(x_t)
-      scales.append(scale)
-      y_tm1 = y_t
-
-    # Prepare tensors, reshape to [B, T, 2].
-    x = torch.stack(x, dim=-2)  # pylint: disable=no-member
-    scales = torch.stack(scales, dim=-2)  # pylint: disable=no-member
-
-    # Log likelihood under base distribution.
-    log_prob = self._base_dist.log_prob(x.view(x.shape[0], -1))
-
-    # Log absolute determinant of Jacobian.
-    logabsdet = torch.log(  # pylint: disable=no-member
-        torch.abs(torch.prod(  # pylint: disable=no-member
-            scales, dim=-1)))  # determinant == product over xy-coordinates
-    logabsdet = torch.sum(logabsdet, dim=-1)  # sum over T dimension # pylint: disable=no-member
-
-    return x, log_prob, logabsdet
 
   def transform(
       self,

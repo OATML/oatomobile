@@ -24,7 +24,7 @@ import torch.nn.functional as F
 
 from oatomobile.baselines.torch import transforms
 from oatomobile.baselines.torch.models import MLP
-from oatomobile.baselines.torch.models import MobileNetV2
+from oatomobile.baselines.torch.networks.perception import MobileNetV2
 from oatomobile.baselines.torch.typing import ArrayLike
 
 
