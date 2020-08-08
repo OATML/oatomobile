@@ -36,38 +36,31 @@ except ImportError:
 # Enable CARLA PythonAPI to be accessed from `oatomobile`.
 carla_path = os.getenv("CARLA_ROOT")
 if carla_path is None:
-  raise EnvironmentError(
-      "Missing environment variable CARLA_ROOT, specify it before importing oatomobile"
-  )
+  logging.warn(
+      "Missing environment variable CARLA_ROOT, "
+      "if you want to use CARLA specify it before importing oatomobile")
 
 logging.debug("CARLA_ROOT={}".format(carla_path))
 carla_python_api = os.path.join(
-    carla_path,
+    carla_path or "",
     "PythonAPI",
     "carla",
 )
 if not os.path.exists(carla_python_api):
-  raise ImportError("Missing CARLA installation at {}".format(carla_python_api))
-sys.path.append(carla_python_api)
+  logging.warn("Missing CARLA installation at {}".format(carla_python_api))
+else:
+  sys.path.append(carla_python_api)
 
-from agents.navigation.controller import VehiclePIDController  # pylint: disable=import-error
-from agents.navigation.local_planner import \
-    LocalPlanner  # pylint: disable=import-error
-from agents.tools.misc import \
-    compute_magnitude_angle  # pylint: disable=import-error
-from agents.tools.misc import draw_waypoints  # pylint: disable=import-error
-from agents.tools.misc import get_speed  # pylint: disable=import-error
-from agents.tools.misc import \
-    is_within_distance_ahead  # pylint: disable=import-error
+###################
+# Matplotlib Hack #
+###################
 
-###############
-
-# HACK(filangel): matplotlib setup - remove before release.
+# Remove before release.
 import matplotlib
 matplotlib.use("Agg")
 
-# Benchmarks API.
-from oatomobile.benchmarks.carnovel.benchmark import carnovel
+###################
+
 # Core API.
 from oatomobile.core.agent import Agent
 from oatomobile.core.benchmark import Benchmark
@@ -92,12 +85,6 @@ from oatomobile.core.simulator import Simulator
 
 # Public API.
 __all__ = (
-    # CARLA Python API
-    "compute_magnitude_angle",
-    "draw_waypoints",
-    "is_within_distance_ahead",
-    "LocalPlanner",
-    "VehiclePIDController",
     # OATomobile core API
     "Agent",
     "Benchmark",

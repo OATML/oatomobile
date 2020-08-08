@@ -28,7 +28,7 @@ from oatomobile.baselines.torch.cil.model import BehaviouralModel
 class CILAgent(SetPointAgent):
   """The conditional imitation learning agent."""
 
-  def __init__(self, environment: oatomobile.envs.CARLAEnv, *,
+  def __init__(self, environment: oatomobile.Env, *,
                model: BehaviouralModel, **kwargs) -> None:
     """Constructs a conditional imitation learning agent.
 

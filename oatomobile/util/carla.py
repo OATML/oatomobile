@@ -715,8 +715,14 @@ def global_plan(
     roadoptions: A sequence of commands to navigate at each waypoint.
     distances: The distance per pair of waypoints of the plan.
   """
-  from agents.navigation.global_route_planner import GlobalRoutePlanner  # pylint: disable=import-error
-  from agents.navigation.global_route_planner_dao import GlobalRoutePlannerDAO  # pylint: disable=import-error
+  try:
+    from agents.navigation.global_route_planner import GlobalRoutePlanner  # pylint: disable=import-error
+    from agents.navigation.global_route_planner_dao import GlobalRoutePlannerDAO  # pylint: disable=import-error
+  except ImportError:
+    raise ImportError(
+        "Missing CARLA installation, "
+        "make sure the environment variable CARLA_ROOT is provided "
+        "and that the PythonAPI is `easy_install`ed")
 
   # Setup global planner.
   grp_dao = GlobalRoutePlannerDAO(wmap=world.get_map(), sampling_resolution=1)

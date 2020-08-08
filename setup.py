@@ -70,15 +70,15 @@ setup(
         # Additional requirements for TensorFlow baselines.
         "tf": [
             "dm-sonnet==2.0.0",
-            "tensorflow==2.2.0",
-            "tensorflow_probability==0.9.0",
-            "tensorboard==2.2.0",
+            "tensorflow==2.3.0",
+            "tensorflow-probability==0.11.0",
+            "tensorboard==2.3.0",
         ],
         # Additional requirements for PyTorch baselines.
         "torch": [
             "torch==1.5.1",
-            "torchvision==0.6.0",
-            "tensorboard==2.2.0",
+            "torchvision==0.6.1",
+            "tensorboard==2.3.0",
         ],
     },
     classifiers=[
