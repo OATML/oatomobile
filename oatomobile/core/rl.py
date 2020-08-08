@@ -30,7 +30,6 @@ from oatomobile.core.dataset import tokens
 from oatomobile.core.simulator import Action
 from oatomobile.core.simulator import Observations
 from oatomobile.core.simulator import Simulator
-from oatomobile.util import graphics as gutil
 
 # OpenAI Gym transition.
 Transition = Tuple[Observations, float, bool, Mapping[str, Any]]
@@ -251,6 +250,7 @@ class MonitorWrapper(gym.Wrapper):
 
   def _record_frame(self):
     """Appends a `frame` in the video."""
+    from oatomobile.util import graphics as gutil
     frame = gutil.downsample(
         image=self.render(mode="rgb_array"),
         factor=self._downsample_factor,

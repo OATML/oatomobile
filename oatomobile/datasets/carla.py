@@ -26,7 +26,6 @@ from typing import Optional
 from typing import Sequence
 from typing import Union
 
-import carla
 import matplotlib.pyplot as plt
 import numpy as np
 import tqdm
@@ -35,8 +34,6 @@ from absl import logging
 
 from oatomobile.core.dataset import Dataset
 from oatomobile.core.dataset import Episode
-from oatomobile.util import carla as cutil
-from oatomobile.util import graphics as gutil
 
 
 class CARLADataset(Dataset):
@@ -73,8 +70,14 @@ class CARLADataset(Dataset):
   @property
   def url(self) -> str:
     """The URL where the dataset is hosted."""
-    return "https://www.cs.ox.ac.uk/people/angelos.filos/data/oatomobile/{}.zip".format(
-        self.id)
+    return os.path.join(
+        "https://www.cs.ox.ac.uk",
+        "people",
+        "angelos.filos",
+        "data",
+        "oatomobile",
+        "{}.zip".format(self.id),
+    )
 
   def download_and_prepare(self, output_dir: str) -> None:
     """Downloads and prepares the dataset from the host URL.
@@ -167,8 +170,8 @@ class CARLADataset(Dataset):
       num_vehicles: int,
       num_pedestrians: int,
       num_steps: int = 1000,
-      spawn_point: Optional[Union[int, carla.Location]] = None,  # pylint: disable=no-member
-      destination: Optional[Union[int, carla.Location]] = None,  # pylint: disable=no-member
+      spawn_point: Optional[Union[int, "carla.Location"]] = None,  # pylint: disable=no-member
+      destination: Optional[Union[int, "carla.Location"]] = None,  # pylint: disable=no-member
       sensors: Sequence[str] = (
           "acceleration",
           "velocity",
@@ -248,6 +251,7 @@ class CARLADataset(Dataset):
       past_length: The length of the past trajectory.
       num_frame_skips: The number of frames to skip.
     """
+    from oatomobile.util import carla as cutil
 
     # Creates the necessary output directory.
     os.makedirs(output_dir, exist_ok=True)
@@ -331,6 +335,8 @@ class CARLADataset(Dataset):
       fname: The absolute path to the datum.
       output_dir: The full path to the output directory.
     """
+    from oatomobile.util import graphics as gutil
+
     COLORS = [
         "#0071bc",
         "#d85218",

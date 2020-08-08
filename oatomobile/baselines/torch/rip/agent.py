@@ -30,7 +30,7 @@ from oatomobile.baselines.torch.dim.model import ImitativeModel
 class RIPAgent(SetPointAgent):
   """The robust imitative planning agent."""
 
-  def __init__(self, environment: oatomobile.envs.CARLAEnv, *, algorithm: str,
+  def __init__(self, environment: oatomobile.Env, *, algorithm: str,
                models: Sequence[ImitativeModel], **kwargs) -> None:
     """Constructs a robust imitative planning agent.
 

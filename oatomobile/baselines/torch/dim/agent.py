@@ -28,8 +28,8 @@ from oatomobile.baselines.torch.dim.model import ImitativeModel
 class DIMAgent(SetPointAgent):
   """The deep imitative model agent."""
 
-  def __init__(self, environment: oatomobile.envs.CARLAEnv, *,
-               model: ImitativeModel, **kwargs) -> None:
+  def __init__(self, environment: oatomobile.Env, *, model: ImitativeModel,
+               **kwargs) -> None:
     """Constructs a deep imitation model agent.
 
     Args:
