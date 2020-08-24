@@ -15,6 +15,7 @@
 """Trains the deep imitative model on expert demostrations."""
 
 import os
+import pdb
 from typing import Mapping
 
 import torch
@@ -80,6 +81,11 @@ flags.DEFINE_bool(
     default=False,
     help="If True it clips the gradients norm to 1.0.",
 )
+flags.DEFINE_bool(
+    name="use_tcn",
+    default=True,
+    help="If True, use the TCN decoder. Other, use the autoregressive decoder.",
+)
 
 
 def main(argv):
@@ -97,6 +103,7 @@ def main(argv):
   num_timesteps_to_keep = FLAGS.num_timesteps_to_keep
   weight_decay = FLAGS.weight_decay
   clip_gradients = FLAGS.clip_gradients
+  use_tcn = FLAGS.use_tcn
   noise_level = 1e-2
 
   # Determines device, accelerator.
@@ -180,11 +187,13 @@ def main(argv):
   ) -> torch.Tensor:
     """Performs a single gradient-descent optimisation step."""
     # Resets optimizer's gradients.
+    # pdb.set_trace()
     optimizer.zero_grad()
 
+    target_mean = batch["player_future"][..., :2] 
     # Perturb target.
     y = torch.normal(  # pylint: disable=no-member
-        mean=batch["player_future"][..., :2],
+        mean=target_mean,
         std=torch.ones_like(batch["player_future"][..., :2]) * noise_level,  # pylint: disable=no-member
     )
 
@@ -195,10 +204,15 @@ def main(argv):
         is_at_traffic_light=batch["is_at_traffic_light"],
         traffic_light_state=batch["traffic_light_state"],
     )
-    _, log_prob, logabsdet = model._decoder._inverse(y=y, z=z)
 
-    # Calculates loss (NLL).
-    loss = -torch.mean(log_prob - logabsdet, dim=0)  # pylint: disable=no-member
+    if use_tcn:
+      z = z.unsqueeze(1) # convert to sequence for TCN processing
+      seq_prediction = model._tcn_decoder(z)
+      loss = F.mse_loss(target_mean, seq_prediction)
+    else:
+      _, log_prob, logabsdet = model._decoder._inverse(y=y, z=z)
+      # Calculates loss (NLL).
+      loss = -torch.mean(log_prob - logabsdet, dim=0)  # pylint: disable=no-member
 
     # Backward pass.
     loss.backward()
@@ -240,13 +254,19 @@ def main(argv):
         is_at_traffic_light=batch["is_at_traffic_light"],
         traffic_light_state=batch["traffic_light_state"],
     )
-    _, log_prob, logabsdet = model._decoder._inverse(
-        y=batch["player_future"][..., :2],
+    
+    target_mean = batch["player_future"][..., :2]
+    if use_tcn:
+      z = z.unsqueeze(1) # convert to sequence for TCN processing
+      seq_prediction = model._tcn_decoder(z)
+      loss = F.mse_loss(target_mean, seq_prediction)
+    else:
+      _, log_prob, logabsdet = model._decoder._inverse(
+        y=target_mean,
         z=z,
-    )
-
-    # Calculates loss (NLL).
-    loss = -torch.mean(log_prob - logabsdet, dim=0)  # pylint: disable=no-member
+      )
+      # Calculates loss (NLL).
+      loss = -torch.mean(log_prob - logabsdet, dim=0)  # pylint: disable=no-member
 
     return loss
 
