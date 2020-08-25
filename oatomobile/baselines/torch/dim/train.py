@@ -15,7 +15,6 @@
 """Trains the deep imitative model on expert demostrations."""
 
 import os
-import pdb
 from typing import Mapping
 
 import torch
@@ -84,7 +83,7 @@ flags.DEFINE_bool(
 flags.DEFINE_bool(
     name="use_tcn",
     default=True,
-    help="If True, use the TCN decoder. Other, use the autoregressive decoder.",
+    help="If True, use the TCN decoder. Otherwise, use the autoregressive decoder.",
 )
 
 
@@ -187,7 +186,6 @@ def main(argv):
   ) -> torch.Tensor:
     """Performs a single gradient-descent optimisation step."""
     # Resets optimizer's gradients.
-    # pdb.set_trace()
     optimizer.zero_grad()
 
     target_mean = batch["player_future"][..., :2] 

@@ -30,8 +30,7 @@ from oatomobile.torch import transforms
 from oatomobile.torch import types
 from oatomobile.torch.networks.mlp import MLP
 from oatomobile.torch.networks.perception import MobileNetV2
-from oatomobile.torch.networks.sequence import AutoregressiveFlow
-from oatomobile.torch.networks.tcn import TCN
+from oatomobile.torch.networks.sequence import AutoregressiveFlow, TCN
 
 
 class ImitativeModel(nn.Module):
@@ -74,7 +73,7 @@ class ImitativeModel(nn.Module):
       num_output_features=2,
       num_channels=[30, 30, 30, 30, 30, 30, 30, 30, 4],
       kernel_size=7,
-      dropout=0.0
+      dropout=0.2
     )
 
   def to(self, *args, **kwargs):
