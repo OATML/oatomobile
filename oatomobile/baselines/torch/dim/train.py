@@ -47,7 +47,7 @@ flags.DEFINE_string(
 )
 flags.DEFINE_integer(
     name="batch_size",
-    default=512,
+    default=50,
     help="The batch size used for training the neural network.",
 )
 flags.DEFINE_integer(
@@ -157,7 +157,7 @@ def main(argv):
       dataset_train,
       batch_size=batch_size,
       shuffle=True,
-      num_workers=50,
+      num_workers=5,
   )
   dataset_val = CARLADataset.as_torch(
       dataset_dir=os.path.join(dataset_dir, "val"),
@@ -167,7 +167,7 @@ def main(argv):
       dataset_val,
       batch_size=batch_size * 5,
       shuffle=True,
-      num_workers=50,
+      num_workers=5,
   )
 
   # Theoretical limit of NLL.
@@ -192,7 +192,7 @@ def main(argv):
     # Perturb target.
     y = torch.normal(  # pylint: disable=no-member
         mean=target_mean,
-        std=torch.ones_like(batch["player_future"][..., :2]) * noise_level,  # pylint: disable=no-member
+        std=torch.ones_like(target_mean) * noise_level,  # pylint: disable=no-member
     )
 
     # Forward pass from the model.
