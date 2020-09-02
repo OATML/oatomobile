@@ -203,14 +203,8 @@ def main(argv):
         traffic_light_state=batch["traffic_light_state"],
     )
 
-    if use_tcn:
-      z = z.unsqueeze(1) # convert to sequence for TCN processing
-      seq_prediction = model._tcn_decoder(z)
-      loss = F.mse_loss(target_mean, seq_prediction)
-    else:
-      _, log_prob, logabsdet = model._decoder._inverse(y=y, z=z)
-      # Calculates loss (NLL).
-      loss = -torch.mean(log_prob - logabsdet, dim=0)  # pylint: disable=no-member
+    target_mean = batch["player_future"][..., :2] 
+    loss = model._decoder.compute_loss(y=target_mean, z=z)
 
     # Backward pass.
     loss.backward()
@@ -254,17 +248,7 @@ def main(argv):
     )
     
     target_mean = batch["player_future"][..., :2]
-    if use_tcn:
-      z = z.unsqueeze(1) # convert to sequence for TCN processing
-      seq_prediction = model._tcn_decoder(z)
-      loss = F.mse_loss(target_mean, seq_prediction)
-    else:
-      _, log_prob, logabsdet = model._decoder._inverse(
-        y=target_mean,
-        z=z,
-      )
-      # Calculates loss (NLL).
-      loss = -torch.mean(log_prob - logabsdet, dim=0)  # pylint: disable=no-member
+    loss = model._decoder.compute_loss(y=target_mean, z=z)
 
     return loss
 

@@ -14,7 +14,7 @@
 # ==============================================================================
 """Sequence generation."""
 
-from typing import Tuple, List
+from typing import Callable, List, Tuple
 
 import torch
 import torch.distributions as D
@@ -215,6 +215,16 @@ class AutoregressiveFlow(nn.Module):
     logabsdet = torch.sum(logabsdet, dim=-1)  # sum over T dimension # pylint: disable=no-member
 
     return x, log_prob, logabsdet
+  
+  def compute_loss(
+      self,
+      y: torch.Tensor,
+      z: torch.Tensor,
+  ) -> torch.Tensor:
+    _, log_prob, logabsdet = self._inverse(y, z)
+    loss = -torch.mean(log_prob - logabsdet, dim=0)  # pylint: disable=no-member
+    return loss
+    
 
 class Chomp1d(nn.Module):
     def __init__(self, chomp_size: int):
@@ -281,7 +291,7 @@ class TCN(nn.Module):
         input_channels: length of input sequence, and in our case, this value is 1 (1 image)
         num_input_features: number of features in input sequence, and in our case, this value is 64 
         num_output_features: number of features in output sequence, and in our case, this value is 2 (2D grid points)
-        num_channels: list of size of hidden layers
+        num_channels: list of sizes of hidden layers
         kernel_size: kernel size of 1D dilated convolution
         dropout: dropout rate after every 1D dilated convolution
 
@@ -308,6 +318,12 @@ class TCN(nn.Module):
     def init_weights(self):
         self.linear.weight.data.normal_(0, 0.01)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         y1 = self.tcn(x)
         return self.linear(y1)
+    
+    def compute_loss(self, y: torch.Tensor, z: torch.Tensor) -> torch.Tensor:
+        z = z.unsqueeze(1) # convert to sequence for TCN processing
+        seq_prediction =self.forward(z)
+        loss = F.mse_loss(y, seq_prediction)
+        return loss

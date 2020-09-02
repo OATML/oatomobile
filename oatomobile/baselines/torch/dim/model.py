@@ -62,12 +62,12 @@ class ImitativeModel(nn.Module):
     )
 
     # The decoder recurrent network used for the sequence generation.
-    self._decoder = AutoregressiveFlow(
-        output_shape=self._output_shape,
-        hidden_size=64,
-    )
+    # self._decoder = AutoregressiveFlow(
+    #     output_shape=self._output_shape,
+    #     hidden_size=64,
+    # )
 
-    self._tcn_decoder = TCN(
+    self._decoder = TCN(
       input_channels=1, 
       num_input_features=64,
       num_output_features=2,
