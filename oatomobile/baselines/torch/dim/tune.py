@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Trains the deep imitative model on expert demonstrations."""
+"""Tune the deep imitative model on expert demonstrations."""
 
 import os
 from typing import Mapping
@@ -26,12 +26,14 @@ import tqdm
 from absl import app
 from absl import flags
 from absl import logging
+from ray import tune
 
 from oatomobile.baselines.torch.dim.model import ImitativeModel
 from oatomobile.datasets.carla import CARLADataset
 from oatomobile.torch import types
 from oatomobile.torch.loggers import TensorBoardLogger
 from oatomobile.torch.savers import Checkpointer
+from oatomobile.utils.loggers import WandBLogger
 
 logging.set_verbosity(logging.DEBUG)
 FLAGS = flags.FLAGS
@@ -47,7 +49,7 @@ flags.DEFINE_string(
 )
 flags.DEFINE_integer(
     name="batch_size",
-    default=512,
+    default=[32, 64, 128, 256, 512, 1024],
     help="The batch size used for training the neural network.",
 )
 flags.DEFINE_integer(
@@ -62,7 +64,7 @@ flags.DEFINE_integer(
 )
 flags.DEFINE_float(
     name="learning_rate",
-    default=1e-3,
+    default=[1e-1, 1e-2, 1e-3, 1e-4, 1e-5],
     help="The ADAM learning rate.",
 )
 flags.DEFINE_integer(
@@ -72,7 +74,7 @@ flags.DEFINE_integer(
 )
 flags.DEFINE_float(
     name="weight_decay",
-    default=0.0,
+    default=[0.0, 1e-2, 1e-3],
     help="The L2 penalty (regularization) coefficient.",
 )
 flags.DEFINE_bool(
@@ -82,22 +84,21 @@ flags.DEFINE_bool(
 )
 
 
-def main(argv):
-  # Debugging purposes.
-  logging.debug(argv)
-  logging.debug(FLAGS)
+def main(config):
 
   # Parses command line arguments.
-  dataset_dir = FLAGS.dataset_dir
-  output_dir = FLAGS.output_dir
-  batch_size = FLAGS.batch_size
-  num_epochs = FLAGS.num_epochs
-  learning_rate = FLAGS.learning_rate
-  save_model_frequency = FLAGS.save_model_frequency
-  num_timesteps_to_keep = FLAGS.num_timesteps_to_keep
-  weight_decay = FLAGS.weight_decay
-  clip_gradients = FLAGS.clip_gradients
-  noise_level = 1e-2
+  dataset_dir = config["dataset_dir"]
+  output_dir = config["output_dir"]
+  save_model_frequency = config["save_model_frequency"]
+  num_timesteps_to_keep = config["num_timesteps_to_keep"]
+  clip_gradients = config["clip_gradients"]
+
+  ## Parse Ray Config
+  batch_size = config["batch_size"]
+  num_epochs = config["num_epochs"]
+  learning_rate = config["learning_rate"]
+  weight_decay = config["weight_decay"]
+  noise_level = config["noise_level"]
 
   # Determines device, accelerator.
   device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # pylint: disable=no-member
@@ -151,7 +152,7 @@ def main(argv):
       dataset_train,
       batch_size=batch_size,
       shuffle=True,
-      num_workers=50,
+      num_workers=2,
   )
   dataset_val = CARLADataset.as_torch(
       dataset_dir=os.path.join(dataset_dir, "val"),
@@ -161,7 +162,7 @@ def main(argv):
       dataset_val,
       batch_size=batch_size * 5,
       shuffle=True,
-      num_workers=50,
+      num_workers=2,
   )
 
   # Theoretical limit of NLL.
@@ -226,6 +227,9 @@ def main(argv):
         batch = transform(batch)
         # Performs a gradien-descent step.
         loss += train_step(model, optimizer, batch, clip=clip_gradients)
+        # Reporting loss to ray tune
+        tune.report(loss=loss)
+
     return loss / len(dataloader)
 
   def evaluate_step(
@@ -264,6 +268,9 @@ def main(argv):
         # Accumulates loss in dataset.
         with torch.no_grad():
           loss += evaluate_step(model, batch)
+        # Reporting loss to ray tune
+        tune.report(eval_loss=loss)
+
     return loss / len(dataloader)
 
   def write(
@@ -320,8 +327,38 @@ def main(argv):
           ))
 
 
+def run_experiments(argv):
+  # Debugging purposes.
+  logging.debug(argv)
+  logging.debug(FLAGS)
+
+  analysis = tune.run(
+      main,
+      loggers=[WandBLogger],
+      num_samples=1,
+      config={
+          "monitor": True,
+          "wandb": {
+              "project": "oatomobile",
+              "monitor_gym": True,
+          },
+          "dataset_dir": FLAGS.dataset_dir,
+          "output_dir": FLAGS.output_dir,
+          "save_model_frequency": FLAGS.save_model_frequency,
+          "num_timesteps_to_keep": FLAGS.num_timesteps_to_keep,
+          "clip_gradients": FLAGS.clip_gradients,
+          "batch_size": tune.grid_search(FLAGS.batch_size),
+          "num_epochs": tune.grid_search(FLAGS.num_epochs),
+          "learning_rate": tune.grid_search(FLAGS.learning_rate),
+          "weight_decay": tune.grid_search(FLAGS.weight_decay),
+          "noise_level": tune.grid_search([1e-1, 1e-2, 1e-3]),
+      })
+
+  print("Best config: ", analysis.get_best_config(metric="loss"))
+
+
 if __name__ == "__main__":
   flags.mark_flag_as_required("dataset_dir")
   flags.mark_flag_as_required("output_dir")
   flags.mark_flag_as_required("num_epochs")
-  app.run(main)
+  app.run(run_experiments)
