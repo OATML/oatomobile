@@ -18,3 +18,4 @@ from oatomobile.utils.loggers.base import Logger
 from oatomobile.utils.loggers.base import LoggingData
 from oatomobile.utils.loggers.csv import CSVLogger
 from oatomobile.utils.loggers.terminal import TerminalLogger
+from oatomobile.utils.loggers.wandb import WandBLogger
