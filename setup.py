@@ -62,6 +62,8 @@ setup(
         "tabulate==0.8.7",
         "scikit-image==0.15.0",
         "dm-tree==0.1.5",
+        "ray==0.8.7",
+        "wandb==0.10.2",
     ],
     tests_require=[
         "pytest",
