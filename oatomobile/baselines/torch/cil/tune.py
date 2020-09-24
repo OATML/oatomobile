@@ -50,7 +50,7 @@ flags.DEFINE_list(
     default=[32, 64, 128, 256, 512, 1024],
     help="The batch size used for training the neural network.",
 )
-flags.DEFINE_integer(
+flags.DEFINE_list(
     name="num_epochs",
     default=None,
     help="The number of training epochs for the neural network.",
