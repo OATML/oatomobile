@@ -45,7 +45,7 @@ flags.DEFINE_string(
     default=None,
     help="The full path to the output directory (for logs, ckpts).",
 )
-flags.DEFINE_integer(
+flags.DEFINE_list(
     name="batch_size",
     default=[32, 64, 128, 256, 512, 1024],
     help="The batch size used for training the neural network.",
@@ -60,7 +60,7 @@ flags.DEFINE_integer(
     default=4,
     help="The number epochs between saves of the model.",
 )
-flags.DEFINE_float(
+flags.DEFINE_list(
     name="learning_rate",
     default=[1e-1, 1e-2, 1e-3, 1e-4, 1e-5],
     help="The ADAM learning rate.",
@@ -70,7 +70,7 @@ flags.DEFINE_integer(
     default=4,
     help="The numbers of time-steps to keep from the target, with downsampling.",
 )
-flags.DEFINE_float(
+flags.DEFINE_list(
     name="weight_decay",
     default=[0.0, 1e-2, 1e-3],
     help="The L2 penalty (regularization) coefficient.",
