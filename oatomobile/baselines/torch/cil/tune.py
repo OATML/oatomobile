@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tune the deep imitative model on expert demonstrations."""
+"""Trains the behavioural cloning agent's model on expert demonstrations."""
 
 import os
 from typing import Mapping
 
 import torch
-import torch.distributions as D
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
@@ -28,12 +27,11 @@ from absl import flags
 from absl import logging
 from ray import tune
 
-from oatomobile.baselines.torch.dim.model import ImitativeModel
+from oatomobile.baselines.torch.cil.model import BehaviouralModel
 from oatomobile.datasets.carla import CARLADataset
 from oatomobile.torch import types
 from oatomobile.torch.loggers import TensorBoardLogger
 from oatomobile.torch.savers import Checkpointer
-from oatomobile.utils.loggers import WandBLogger
 
 logging.set_verbosity(logging.DEBUG)
 FLAGS = flags.FLAGS
@@ -112,7 +110,8 @@ def main(config):
 
   # Initializes the model and its optimizer.
   output_shape = [num_timesteps_to_keep, 2]
-  model = ImitativeModel(output_shape=output_shape).to(device)
+  model = BehaviouralModel(output_shape=output_shape).to(device)
+  criterion = nn.L1Loss(reduction="none")
   optimizer = optim.Adam(
       model.parameters(),
       lr=learning_rate,
@@ -147,6 +146,7 @@ def main(config):
   dataset_train = CARLADataset.as_torch(
       dataset_dir=os.path.join(dataset_dir, "train"),
       modalities=modalities,
+      mode=True,
   )
   dataloader_train = torch.utils.data.DataLoader(
       dataset_train,
@@ -157,6 +157,7 @@ def main(config):
   dataset_val = CARLADataset.as_torch(
       dataset_dir=os.path.join(dataset_dir, "val"),
       modalities=modalities,
+      mode=True,
   )
   dataloader_val = torch.utils.data.DataLoader(
       dataset_val,
@@ -165,16 +166,8 @@ def main(config):
       num_workers=2,
   )
 
-  # Theoretical limit of NLL.
-  nll_limit = -torch.sum(  # pylint: disable=no-member
-      D.MultivariateNormal(
-          loc=torch.zeros(output_shape[-2] * output_shape[-1]),  # pylint: disable=no-member
-          scale_tril=torch.eye(output_shape[-2] * output_shape[-1]) *  # pylint: disable=no-member
-          noise_level,  # pylint: disable=no-member
-      ).log_prob(torch.zeros(output_shape[-2] * output_shape[-1])))  # pylint: disable=no-member
-
   def train_step(
-      model: ImitativeModel,
+      model: BehaviouralModel,
       optimizer: optim.Optimizer,
       batch: Mapping[str, torch.Tensor],
       clip: bool = False,
@@ -182,39 +175,23 @@ def main(config):
     """Performs a single gradient-descent optimisation step."""
     # Resets optimizer's gradients.
     optimizer.zero_grad()
-
-    # Perturb target.
-    y = torch.normal(  # pylint: disable=no-member
-        mean=batch["player_future"][..., :2],
-        std=torch.ones_like(batch["player_future"][..., :2]) * noise_level,  # pylint: disable=no-member
-    )
-
     # Forward pass from the model.
-    z = model._params(
-        velocity=batch["velocity"],
-        visual_features=batch["visual_features"],
-        is_at_traffic_light=batch["is_at_traffic_light"],
-        traffic_light_state=batch["traffic_light_state"],
-    )
-    _, log_prob, logabsdet = model._decoder._inverse(y=y, z=z)
-
-    # Calculates loss (NLL).
-    loss = -torch.mean(log_prob - logabsdet, dim=0)  # pylint: disable=no-member
-
+    predictions = model(**batch)
+    # Calculates loss.
+    loss = criterion(predictions, batch["player_future"][..., :2])
+    loss = torch.sum(loss, dim=[-2, -1])  # pylint: disable=no-member
+    loss = torch.mean(loss, dim=0)  # pylint: disable=no-member
     # Backward pass.
     loss.backward()
-
     # Clips gradients norm.
     if clip:
       torch.nn.utils.clip_grad_norm(model.parameters(), 1.0)
-
     # Performs a gradient descent step.
     optimizer.step()
-
     return loss
 
   def train_epoch(
-      model: ImitativeModel,
+      model: BehaviouralModel,
       optimizer: optim.Optimizer,
       dataloader: torch.utils.data.DataLoader,
   ) -> torch.Tensor:
@@ -233,29 +210,20 @@ def main(config):
     return loss / len(dataloader)
 
   def evaluate_step(
-      model: ImitativeModel,
+      model: BehaviouralModel,
       batch: Mapping[str, torch.Tensor],
   ) -> torch.Tensor:
     """Evaluates `model` on a `batch`."""
     # Forward pass from the model.
-    z = model._params(
-        velocity=batch["velocity"],
-        visual_features=batch["visual_features"],
-        is_at_traffic_light=batch["is_at_traffic_light"],
-        traffic_light_state=batch["traffic_light_state"],
-    )
-    _, log_prob, logabsdet = model._decoder._inverse(
-        y=batch["player_future"][..., :2],
-        z=z,
-    )
-
-    # Calculates loss (NLL).
-    loss = -torch.mean(log_prob - logabsdet, dim=0)  # pylint: disable=no-member
-
+    predictions = model(**batch)
+    # Calculates loss on mini-batch.
+    loss = criterion(predictions, batch["player_future"][..., :2])
+    loss = torch.sum(loss, dim=[-2, -1])  # pylint: disable=no-member
+    loss = torch.mean(loss, dim=0)  # pylint: disable=no-member
     return loss
 
   def evaluate_epoch(
-      model: ImitativeModel,
+      model: BehaviouralModel,
       dataloader: torch.utils.data.DataLoader,
   ) -> torch.Tensor:
     """Performs an evaluation of the `model` on the `dataloader."""
@@ -274,7 +242,7 @@ def main(config):
     return loss / len(dataloader)
 
   def write(
-      model: ImitativeModel,
+      model: BehaviouralModel,
       dataloader: torch.utils.data.DataLoader,
       writer: TensorBoardLogger,
       split: str,
@@ -286,14 +254,9 @@ def main(config):
     batch = next(iter(dataloader))
     # Prepares the batch.
     batch = transform(batch)
-    # Turns off gradients for model parameters.
-    for params in model.parameters():
-      params.requires_grad = False
     # Generates predictions.
-    predictions = model(num_steps=20, **batch)
-    # Turns on gradients for model parameters.
-    for params in model.parameters():
-      params.requires_grad = True
+    with torch.no_grad():
+      predictions = model(**batch)
     # Logs on `TensorBoard`.
     writer.log(
         split=split,
@@ -319,12 +282,10 @@ def main(config):
         checkpointer.save(epoch)
 
       # Updates progress bar description.
-      pbar_epoch.set_description(
-          "TL: {:.2f} | VL: {:.2f} | THEORYMIN: {:.2f}".format(
-              loss_train.detach().cpu().numpy().item(),
-              loss_val.detach().cpu().numpy().item(),
-              nll_limit,
-          ))
+      pbar_epoch.set_description("TL: {:.2f} | VL: {:.2f}".format(
+          loss_train.detach().cpu().numpy().item(),
+          loss_val.detach().cpu().numpy().item(),
+      ))
 
 
 def run_experiments(argv):
