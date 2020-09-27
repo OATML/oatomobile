@@ -54,7 +54,7 @@ flags.DEFINE_list(
 )
 flags.DEFINE_list(
     name="num_epochs",
-    default=None,
+    default=[1024],
     help="The number of training epochs for the neural network.",
 )
 flags.DEFINE_integer(
@@ -136,34 +136,9 @@ def main(config):
     batch = model.transform(batch)
     return batch
 
-  # Setups the dataset and the dataloader.
-  modalities = (
-      "lidar",
-      "is_at_traffic_light",
-      "traffic_light_state",
-      "player_future",
-      "velocity",
-  )
-  dataset_train = CARLADataset.as_torch(
-      dataset_dir=os.path.join(dataset_dir, "train"),
-      modalities=modalities,
-  )
-  dataloader_train = torch.utils.data.DataLoader(
-      dataset_train,
-      batch_size=batch_size,
-      shuffle=True,
-      num_workers=2,
-  )
-  dataset_val = CARLADataset.as_torch(
-      dataset_dir=os.path.join(dataset_dir, "val"),
-      modalities=modalities,
-  )
-  dataloader_val = torch.utils.data.DataLoader(
-      dataset_val,
-      batch_size=batch_size * 5,
-      shuffle=True,
-      num_workers=2,
-  )
+  ## Data Loader
+  dataloader_train = config["dataloader_train"]
+  dataloader_val = config["dataloader_val"]
 
   # Theoretical limit of NLL.
   nll_limit = -torch.sum(  # pylint: disable=no-member
@@ -332,27 +307,74 @@ def run_experiments(argv):
   logging.debug(argv)
   logging.debug(FLAGS)
 
+  # Parses command line arguments.
+  dataset_dir = FLAGS.dataset_dir
+  output_dir = FLAGS.output_dir
+  batch_size = FLAGS.batch_size
+  num_epochs = FLAGS.num_epochs
+  learning_rate = FLAGS.learning_rate
+  save_model_frequency = FLAGS.save_model_frequency
+  num_timesteps_to_keep = FLAGS.num_timesteps_to_keep
+  weight_decay = FLAGS.weight_decay
+  clip_gradients = FLAGS.clip_gradients
+  noise_level = [1e-1, 1e-2, 1e-3]
+
+  # Setups the dataset and the dataloader.
+  modalities = (
+      "lidar",
+      "is_at_traffic_light",
+      "traffic_light_state",
+      "player_future",
+      "velocity",
+  )
+  dataset_train = CARLADataset.as_torch(
+      dataset_dir=os.path.join(dataset_dir, "train"),
+      modalities=modalities,
+  )
+  dataloader_train = torch.utils.data.DataLoader(
+      dataset_train,
+      batch_size=batch_size,
+      shuffle=True,
+      num_workers=2,
+  )
+  dataset_val = CARLADataset.as_torch(
+      dataset_dir=os.path.join(dataset_dir, "val"),
+      modalities=modalities,
+  )
+  dataloader_val = torch.utils.data.DataLoader(
+      dataset_val,
+      batch_size=batch_size * 5,
+      shuffle=True,
+      num_workers=2,
+  )
+
   analysis = tune.run(
       main,
       loggers=[WandBLogger],
       num_samples=1,
+      resources_per_trial={
+          'gpu': torch.cuda.device_count(),
+      },
       config={
           "monitor": True,
           "wandb": {
               "project": "oatomobile",
               "monitor_gym": True,
           },
-          "dataset_dir": FLAGS.dataset_dir,
-          "output_dir": FLAGS.output_dir,
-          "save_model_frequency": FLAGS.save_model_frequency,
-          "num_timesteps_to_keep": FLAGS.num_timesteps_to_keep,
-          "clip_gradients": FLAGS.clip_gradients,
-          "batch_size": tune.grid_search(FLAGS.batch_size),
-          "num_epochs": tune.grid_search(FLAGS.num_epochs),
-          "learning_rate": tune.grid_search(FLAGS.learning_rate),
-          "weight_decay": tune.grid_search(FLAGS.weight_decay),
-          "noise_level": tune.grid_search([1e-1, 1e-2, 1e-3]),
-      })
+          "dataset_dir": dataset_dir,
+          "output_dir": output_dir,
+          "dataloader_train": dataloader_train,
+          "dataloader_val": dataloader_val,
+          "save_model_frequency": save_model_frequency,
+          "num_timesteps_to_keep": num_timesteps_to_keep,
+          "clip_gradients": clip_gradients,
+          "batch_size": tune.grid_search(batch_size),
+          "num_epochs": tune.grid_search(num_epochs),
+          "learning_rate": tune.grid_search(learning_rate),
+          "weight_decay": tune.grid_search(weight_decay),
+          "noise_level": tune.grid_search(noise_level),
+      },
+  )
 
   print("Best config: ", analysis.get_best_config(metric="loss"))
 
