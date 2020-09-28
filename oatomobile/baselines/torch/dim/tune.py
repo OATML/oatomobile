@@ -136,9 +136,34 @@ def main(config):
     batch = model.transform(batch)
     return batch
 
-  ## Data Loader
-  dataloader_train = config["dataloader_train"]
-  dataloader_val = config["dataloader_val"]
+  # Setups the dataset and the dataloader.
+  modalities = (
+      "lidar",
+      "is_at_traffic_light",
+      "traffic_light_state",
+      "player_future",
+      "velocity",
+  )
+  dataset_train = CARLADataset.as_torch(
+      dataset_dir=os.path.join(dataset_dir, "train"),
+      modalities=modalities,
+  )
+  dataloader_train = torch.utils.data.DataLoader(
+      dataset_train,
+      batch_size=batch_size,
+      shuffle=True,
+      num_workers=2,
+  )
+  dataset_val = CARLADataset.as_torch(
+      dataset_dir=os.path.join(dataset_dir, "val"),
+      modalities=modalities,
+  )
+  dataloader_val = torch.utils.data.DataLoader(
+      dataset_val,
+      batch_size=batch_size * 5,
+      shuffle=True,
+      num_workers=2,
+  )
 
   # Theoretical limit of NLL.
   nll_limit = -torch.sum(  # pylint: disable=no-member
@@ -319,35 +344,6 @@ def run_experiments(argv):
   clip_gradients = FLAGS.clip_gradients
   noise_level = [1e-1, 1e-2, 1e-3]
 
-  # Setups the dataset and the dataloader.
-  modalities = (
-      "lidar",
-      "is_at_traffic_light",
-      "traffic_light_state",
-      "player_future",
-      "velocity",
-  )
-  dataset_train = CARLADataset.as_torch(
-      dataset_dir=os.path.join(dataset_dir, "train"),
-      modalities=modalities,
-  )
-  dataloader_train = torch.utils.data.DataLoader(
-      dataset_train,
-      batch_size=batch_size,
-      shuffle=True,
-      num_workers=2,
-  )
-  dataset_val = CARLADataset.as_torch(
-      dataset_dir=os.path.join(dataset_dir, "val"),
-      modalities=modalities,
-  )
-  dataloader_val = torch.utils.data.DataLoader(
-      dataset_val,
-      batch_size=batch_size * 5,
-      shuffle=True,
-      num_workers=2,
-  )
-
   analysis = tune.run(
       main,
       loggers=[WandBLogger],
@@ -363,8 +359,6 @@ def run_experiments(argv):
           },
           "dataset_dir": dataset_dir,
           "output_dir": output_dir,
-          "dataloader_train": dataloader_train,
-          "dataloader_val": dataloader_val,
           "save_model_frequency": save_model_frequency,
           "num_timesteps_to_keep": num_timesteps_to_keep,
           "clip_gradients": clip_gradients,
