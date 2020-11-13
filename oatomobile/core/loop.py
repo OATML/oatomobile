@@ -104,7 +104,7 @@ class EnvironmentLoop:
     finally:
       # Garbage collector.
       try:
-        environment.close()
+        self._environment.close()
       except NameError:
         pass
 

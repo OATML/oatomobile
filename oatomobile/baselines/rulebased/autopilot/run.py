@@ -95,7 +95,9 @@ def main(argv):
       )
     if output_dir is not None:
       env = oatomobile.SaveToDiskWrapper(env, output_dir=output_dir)
-    env = oatomobile.MonitorWrapper(env, output_fname="tmp/yoo.gif")
+
+    # MonitorWrapper is incompatible with render_mode = human. Either it or --render should be used at the same time.
+    env = oatomobile.MonitorWrapper(env, output_fname="carla_dataset/carla_dataset.gif")
 
     # Runs the environment loop.
     oatomobile.EnvironmentLoop(

@@ -87,7 +87,11 @@ class CameraSensor(simulator.Sensor, abc.ABC):
     self.config = config
     self.sensor = self._spawn_sensor(hero, self.config)  # pylint: disable=no-member
     self.queue = queue.Queue()
-    self.sensor.listen(self.queue.put)
+    self.sensor.listen(self.put_to_queue)
+
+  def put_to_queue(self, item):
+    # logging.warning(f"frame {item.frame} added.")
+    self.queue.put(item)
 
   @property
   def observation_space(self, *args: Any, **kwargs: Any) -> gym.spaces.Box:
@@ -146,8 +150,11 @@ class CameraRGBSensor(CameraSensor):
     try:
       while True:
         data = self.queue.get(timeout=timeout)
+        # logging.debug(f"frame {data.frame} removed from queue. frame {frame} requested.")
+
         # Confirms synced frames.
         if data.frame == frame:
+          # logging.debug(f"received/removed synced frame {data.frame} from queue.")
           break
       # Processes the raw sensor data to a RGB array.
       return cutil.carla_rgb_image_to_ndarray(data)
@@ -1272,7 +1279,7 @@ class GoalSensor(simulator.Sensor):
     # Fetches hero measurements for the coordinate transformations.
     hero_transform = self._hero.get_transform()
 
-    if self._goal is None or self._num_steps % self._replan_every_steps == 0:
+    if self._goal is None or self._num_steps % int(self._replan_every_steps) == 0:
       # References to CARLA objects.
       carla_world = self._hero.get_world()
       carla_map = carla_world.get_map()
@@ -1291,7 +1298,7 @@ class GoalSensor(simulator.Sensor):
 
       # Samples goals.
       goals_world = [waypoints[0]]
-      for _ in range(self._num_goals - 1):
+      for _ in range(int(self._num_goals) - 1):
         goals_world.append(goals_world[-1].next(self._sampling_radius)[0])
 
       # Converts goals to `NumPy` arrays.
@@ -1639,6 +1646,7 @@ class CARLASimulator(simulator.Simulator):
     self._world = None
     self._frame = None
     self._server = None
+    self._traffic_manager = None
     self._frame0 = None
     self._dt = None
     self._vehicles = None
@@ -1709,7 +1717,7 @@ class CARLASimulator(simulator.Simulator):
       The initial observations.
     """
     # CARLA setup.
-    self._client, self._world, self._frame, self._server = cutil.setup(
+    self._client, self._world, self._frame, self._server, self._traffic_manager = cutil.setup(
         town=self._town,
         fps=self._fps,
         client_timeout=self._client_timeout,
@@ -1721,17 +1729,15 @@ class CARLASimulator(simulator.Simulator):
     self._hero = cutil.spawn_hero(
         world=self._world,
         spawn_point=self.spawn_point,
-        vehicle_id="vehicle.ford.mustang",
+        vehicle_id="vehicle.tesla.model3",
     )
     # Initializes the other vehicles.
-    self._vehicles = cutil.spawn_vehicles(
+    self._vehicles, self._pedestrians = cutil.spawn_vehicles_and_pedestrians(
         world=self._world,
+        client=self._client,
+        traffic_manager=self._traffic_manager,
         num_vehicles=self._num_vehicles,
-    )
-    # Initializes the pedestrians.
-    self._pedestrians = cutil.spawn_pedestrians(
-        world=self._world,
-        num_pedestrians=self._num_pedestrians,
+        num_pedestrians=self._num_pedestrians
     )
     # Registers the sensors.
     self._sensor_suite = simulator.SensorSuite([
@@ -1786,7 +1792,7 @@ class CARLASimulator(simulator.Simulator):
     if mode not in ("human", "rgb_array"):
       raise ValueError("Unrecognised mode value {} passed.".format(mode))
 
-    if self._display is None or self._clock is None is None:
+    if self._display is None or self._clock is None:
       # TODO(filangel): clean this up
       width = 0
       if "left_camera_rgb" in self._observations:
