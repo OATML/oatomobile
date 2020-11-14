@@ -20,6 +20,7 @@ import os
 import queue
 import random
 import signal
+import sys
 import time
 from typing import Any
 from typing import Mapping
@@ -1603,6 +1604,30 @@ class GameStateSensor(simulator.Sensor):
 class CARLASimulator(simulator.Simulator):
   """A thin CARLA simulator wrapper."""
 
+  # Restarting server causes traffic_manager to raise TimeoutException.
+  # This shares Carla server between all simulators and keep it running. Thus, the envs can be run only sequentially.
+  carla_server = None
+  server_port = None
+
+  @classmethod
+  def _start_carla_server(cls, town: str,
+                          off_screen: bool = False,
+                          server_timestop: float = 20.0):
+
+    # Check if the server is not yet started
+    if cls.carla_server is None:
+      cls.carla_server, cls.server_port = cutil.setup(town=town,
+                                                      off_screen=off_screen,
+                                                      server_timestop=server_timestop)
+
+  @classmethod
+  def stop_carla_server(cls):
+    logging.debug("Stopping CARLA server at port={}".format(cls.server_port))
+    os.killpg(cls.carla_server.pid, signal.SIGKILL)
+    atexit.unregister(lambda: os.killpg(cls.carla_server.pid, signal.SIGKILL))
+    cls.carla_server = None
+    cls.server_port = None
+
   def __init__(
       self,
       town: str,
@@ -1613,6 +1638,7 @@ class CARLASimulator(simulator.Simulator):
       num_pedestrians: int = 0,
       fps: int = defaults.SIMULATOR_FPS,
       client_timeout: float = defaults.CARLA_CLIENT_TIMEOUT,
+      off_screen: bool = False
   ) -> None:
     """Constructs a CARLA simulator wrapper.
 
@@ -1632,12 +1658,14 @@ class CARLASimulator(simulator.Simulator):
       fps: The frequency (in Hz) of the simulation.
       client_timeout: The time interval before stopping
         the search for the carla server.
+      off_screen: If true it starts Carla server in off-screen mode.
     """
     # Configuration variables.
     self._town = town
     self._sensors = sensors
     self._fps = fps
     self._client_timeout = client_timeout
+    self._off_screen = off_screen
     self._num_vehicles = num_vehicles
     self._num_pedestrians = num_pedestrians
 
@@ -1666,6 +1694,24 @@ class CARLASimulator(simulator.Simulator):
     # Graphics setup.
     self._display = None
     self._clock = None
+
+    CARLASimulator._start_carla_server(town=self._town, off_screen=self._off_screen)
+
+    # Connect client.
+    logging.debug("Connects a CARLA client at port={}".format(CARLASimulator.server_port))
+    try:
+        self._client = carla.Client("localhost", CARLASimulator.server_port)  # pylint: disable=no-member
+        self._client.set_timeout(client_timeout)
+        self._traffic_manager = self._client.get_trafficmanager(8000)
+        self._traffic_manager.set_global_distance_to_leading_vehicle(1.0)
+        self._traffic_manager.set_synchronous_mode(True)
+        logging.debug("Server version: {}".format(self._client.get_server_version()))
+        logging.debug("Client version: {}".format(self._client.get_client_version()))
+    except RuntimeError as msg:
+      logging.debug(msg)
+      CARLASimulator.stop_carla_server()
+      logging.error("Failed to connect to CARLA server.")
+      sys.exit()
 
   @property
   def hero(self) -> carla.Vehicle:  # pylint: disable=no-member
@@ -1716,12 +1762,10 @@ class CARLASimulator(simulator.Simulator):
     Returns:
       The initial observations.
     """
-    # CARLA setup.
-    self._client, self._world, self._frame, self._server, self._traffic_manager = cutil.setup(
-        town=self._town,
-        fps=self._fps,
-        client_timeout=self._client_timeout,
-    )
+    self._world, self._frame = cutil.load_and_wait_for_world(self._client,
+                                                             self._town,
+                                                             self._fps,
+                                                             self._traffic_manager)
     self._frame0 = int(self._frame)
     self._dt = self._world.get_settings().fixed_delta_seconds
 
@@ -1844,10 +1888,10 @@ class CARLASimulator(simulator.Simulator):
     if self.sensor_suite is not None:
       self.sensor_suite.close()
       self._sensor_suite = None
-    settings = self._world.get_settings()
-    settings.synchronous_mode = False
-    self._world.apply_settings(settings)
-    logging.debug("Closes the CARLA server with process PID {}".format(
-        self._server.pid))
-    os.killpg(self._server.pid, signal.SIGKILL)
-    atexit.unregister(lambda: os.killpg(self._server.pid, signal.SIGKILL))
+    if self._world is not None:
+      settings = self._world.get_settings()
+      settings.synchronous_mode = False
+      self._world.apply_settings(settings)
+      self._world = None
+    if self._client is not None:
+      self._client = None

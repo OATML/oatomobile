@@ -41,97 +41,70 @@ from absl import logging
 import carla
 
 
+def load_and_wait_for_world(client: carla.Client,
+                            town: str,
+                            fps: int,
+                            traffic_manager: carla.TrafficManager
+                            ) -> Tuple[carla.World, int]:
+    """
+    Load a new CARLA world
+    """
+
+    client.load_world(town)
+    world = client.get_world()
+
+    settings = world.get_settings()
+    settings.synchronous_mode = True
+    settings.fixed_delta_seconds = 1.0 / fps
+    frame = world.apply_settings(settings)
+
+    traffic_manager.set_synchronous_mode(True)
+
+    world.tick()
+
+    return world, frame
+
+
 def setup(
-    town: str,
-    fps: int = 20,
-    server_timestop: float = 20.0,
-    client_timeout: float = 20.0,
-    num_max_restarts: int = 5,
-) -> Tuple[carla.Client, carla.World, int, subprocess.Popen, carla.TrafficManager]:  # pylint: disable=no-member
-  """Returns the `CARLA` `server`, `client` and `world`.
+        town: str,
+        off_screen: bool = False,
+        server_timestop: float = 20.0
+) -> Tuple[subprocess.Popen, int]:  # pylint: disable=no-member
+    """Returns the `CARLA` `server`, `client` and `world`.
 
-  Args:
-    town: The `CARLA` town identifier.
-    fps: The frequency (in Hz) of the simulation.
-    server_timestop: The time interval between spawing the server
-      and resuming program.
-    client_timeout: The time interval before stopping
-      the search for the carla server.
-    num_max_restarts: Number of attempts to connect to the server.
-
-  Returns:
-    client: The `CARLA` client.
-    world: The `CARLA` world.
-    frame: The synchronous simulation time step ID.
-    server: The `CARLA` server.
-  """
-  assert town in ("Town01", "Town02", "Town03", "Town04", "Town05")
-
-  # The attempts counter.
-  attempts = 0
-
-  while attempts < num_max_restarts:
-    logging.debug("{} out of {} attempts to setup the CARLA simulator".format(
-        attempts + 1, num_max_restarts))
+    Args:
+      town: The `CARLA` town identifier.
+      server_timestop: The time interval between spawning the server
+        and resuming program.
+    Returns:
+      server: The `CARLA` server.
+    """
+    assert town in ("Town01", "Town02", "Town03", "Town04", "Town05")
 
     # Random assignment of port.
     port = np.random.randint(2000, 3000)
 
     # Start CARLA server.
     env = os.environ.copy()
-    # to enable off-screen uncomment the following line and use -opengl flag for running carla
-    # env["DISPLAY"] = ""
+    params = [
+        os.path.join(os.environ.get("CARLA_ROOT"), "CarlaUE4.sh"),
+        "-carla-rpc-port={}".format(port),
+        "-quality-level=Epic"
+    ]
+    if off_screen:
+        env["DISPLAY"] = ""
+        params.append("-opengl")
+
     logging.debug("Inits a CARLA server at port={}".format(port))
-    server = subprocess.Popen(
-        [
-            os.path.join(os.environ.get("CARLA_ROOT"), "CarlaUE4.sh"),
-            "-carla-rpc-port={}".format(port),
-            "-quality-level=Epic",
-            "-opengl"
-        ],
-        stdout=None,
-        stderr=subprocess.STDOUT,
-        preexec_fn=os.setsid,
-        env=env,
-    )
+    server = subprocess.Popen(params,
+                              stdout=None,
+                              stderr=subprocess.STDOUT,
+                              preexec_fn=os.setsid,
+                              env=env)
     atexit.register(os.killpg, server.pid, signal.SIGKILL)
     time.sleep(server_timestop)
 
-    # Connect client.
-    logging.debug("Connects a CARLA client at port={}".format(port))
-    try:
-      client = carla.Client("localhost", port)  # pylint: disable=no-member
-      client.set_timeout(client_timeout)
-      client.load_world(map_name=town)
-      world = client.get_world()
-
-      traffic_manager = client.get_trafficmanager(8000)
-
-      world.set_weather(carla.WeatherParameters.ClearNoon)  # pylint: disable=no-member
-      frame = world.apply_settings(
-          carla.WorldSettings(  # pylint: disable=no-member
-              no_rendering_mode=False,
-              synchronous_mode=True,
-              fixed_delta_seconds=1.0 / fps,
-          ))
-
-      traffic_manager.set_global_distance_to_leading_vehicle(1.0)
-      traffic_manager.set_synchronous_mode(True)
-
-      logging.debug("Server version: {}".format(client.get_server_version()))
-      logging.debug("Client version: {}".format(client.get_client_version()))
-      return client, world, frame, server, traffic_manager
-    except RuntimeError as msg:
-      logging.debug(msg)
-      attempts += 1
-      logging.debug("Stopping CARLA server at port={}".format(port))
-      os.killpg(server.pid, signal.SIGKILL)
-      atexit.unregister(lambda: os.killpg(server.pid, signal.SIGKILL))
-
-  logging.debug(
-      "Failed to connect to CARLA after {} attempts".format(num_max_restarts))
-  sys.exit()
-
+    return server, port
 
 def carla_rgb_image_to_ndarray(image: carla.Image) -> np.ndarray:  # pylint: disable=no-member
   """Returns a `NumPy` array from a `CARLA` RGB image.
@@ -621,16 +594,16 @@ def get_actors(
       vehicle_id="vehicle.ford.mustang",
   )
   # Other vehicles.
-  vehicles = spawn_vehicles(
-      world=world,
-      num_vehicles=num_vehicles,
-  )
+  # vehicles = spawn_vehicles(
+  #     world=world,
+  #     num_vehicles=num_vehicles,
+  # )
   # Other pedestrians.
-  pedestrians = spawn_pedestrians(
-      world=world,
-      num_pedestrians=num_pedestrians,
-  )
-  return hero, vehicles, pedestrians
+  # pedestrians = spawn_pedestrians(
+  #     world=world,
+  #     num_pedestrians=num_pedestrians,
+  # )
+  # return hero, vehicles, pedestrians
 
 
 def vehicle_to_carla_measurements(

@@ -67,7 +67,11 @@ flags.DEFINE_bool(
     default=False,
     help="If True it spawn the `PyGame` display.",
 )
-
+flags.DEFINE_bool(
+    name="off_screen",
+    default=False,
+    help="If True it runs the Carla server in off-screen mode",
+)
 
 def main(argv):
   # Debugging purposes.
@@ -80,6 +84,7 @@ def main(argv):
   max_episode_steps = FLAGS.max_episode_steps
   output_dir = FLAGS.output_dir
   render = FLAGS.render
+  off_screen = FLAGS.off_screen
 
   try:
     # Setups the environment.
@@ -87,6 +92,7 @@ def main(argv):
         town=town,
         fps=20,
         sensors=sensors,
+        off_screen=off_screen
     )
     if max_episode_steps is not None:
       env = oatomobile.FiniteHorizonWrapper(
