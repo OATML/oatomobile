@@ -48,7 +48,8 @@ class CARLAEnv(Env):
       fps: int = defaults.SIMULATOR_FPS,
       sensors: Sequence[str] = defaults.CARLA_SENSORS,
       num_vehicles: int = 0,
-      num_pedestrians: int = 0) -> None:
+      num_pedestrians: int = 0,
+      off_screen: bool = False) -> None:
     """Constructs a CARLA simulator-based OpenAI gym-compatible environment.
 
     Args:
@@ -65,6 +66,7 @@ class CARLAEnv(Env):
       sensors: The set of sensors registered on the ego vehicle.
       num_vehicles: The number of vehicles to spawn.
       num_pedestrians: The number of pedestrians to spawn.
+      off_screen: If true it starts Carla server in off-screen mode.
     """
     # Makes sure main sensors are registered and that passed are registered.
     _sensors = set([
@@ -91,6 +93,7 @@ class CARLAEnv(Env):
         destination=destination,
         num_vehicles=num_vehicles,
         num_pedestrians=num_pedestrians,
+        off_screen=off_screen
     )
 
   @property
@@ -131,7 +134,8 @@ class CARLANavEnv(CARLAEnv):
       sensors: Sequence[str] = defaults.CARLA_SENSORS,
       num_vehicles: int = 0,
       num_pedestrians: int = 0,
-      proximity_destination_threshold: float = 7.5) -> None:
+      proximity_destination_threshold: float = 7.5,
+      off_screen: bool = False) -> None:
     """Constructs a CARLA simulator-based OpenAI gym-compatible environment.
 
     Args:
@@ -159,6 +163,7 @@ class CARLANavEnv(CARLAEnv):
         sensors=sensors,
         num_vehicles=num_vehicles,
         num_pedestrians=num_pedestrians,
+        off_screen=off_screen
     )
     # Internalize hyperparameters.
     self._proximity_destination_threshold = proximity_destination_threshold

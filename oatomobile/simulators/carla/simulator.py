@@ -20,6 +20,7 @@ import os
 import queue
 import random
 import signal
+import sys
 import time
 from typing import Any
 from typing import Mapping
@@ -87,7 +88,11 @@ class CameraSensor(simulator.Sensor, abc.ABC):
     self.config = config
     self.sensor = self._spawn_sensor(hero, self.config)  # pylint: disable=no-member
     self.queue = queue.Queue()
-    self.sensor.listen(self.queue.put)
+    self.sensor.listen(self.put_to_queue)
+
+  def put_to_queue(self, item):
+    # logging.warning(f"frame {item.frame} added.")
+    self.queue.put(item)
 
   @property
   def observation_space(self, *args: Any, **kwargs: Any) -> gym.spaces.Box:
@@ -146,8 +151,11 @@ class CameraRGBSensor(CameraSensor):
     try:
       while True:
         data = self.queue.get(timeout=timeout)
+        # logging.debug(f"frame {data.frame} removed from queue. frame {frame} requested.")
+
         # Confirms synced frames.
         if data.frame == frame:
+          # logging.debug(f"received/removed synced frame {data.frame} from queue.")
           break
       # Processes the raw sensor data to a RGB array.
       return cutil.carla_rgb_image_to_ndarray(data)
@@ -1272,7 +1280,7 @@ class GoalSensor(simulator.Sensor):
     # Fetches hero measurements for the coordinate transformations.
     hero_transform = self._hero.get_transform()
 
-    if self._goal is None or self._num_steps % self._replan_every_steps == 0:
+    if self._goal is None or self._num_steps % int(self._replan_every_steps) == 0:
       # References to CARLA objects.
       carla_world = self._hero.get_world()
       carla_map = carla_world.get_map()
@@ -1291,7 +1299,7 @@ class GoalSensor(simulator.Sensor):
 
       # Samples goals.
       goals_world = [waypoints[0]]
-      for _ in range(self._num_goals - 1):
+      for _ in range(int(self._num_goals) - 1):
         goals_world.append(goals_world[-1].next(self._sampling_radius)[0])
 
       # Converts goals to `NumPy` arrays.
@@ -1596,6 +1604,30 @@ class GameStateSensor(simulator.Sensor):
 class CARLASimulator(simulator.Simulator):
   """A thin CARLA simulator wrapper."""
 
+  # Restarting server causes traffic_manager to raise TimeoutException.
+  # This shares Carla server between all simulators and keep it running. Thus, the envs can be run only sequentially.
+  carla_server = None
+  server_port = None
+
+  @classmethod
+  def _start_carla_server(cls, town: str,
+                          off_screen: bool = False,
+                          server_timestop: float = 20.0):
+
+    # Check if the server is not yet started
+    if cls.carla_server is None:
+      cls.carla_server, cls.server_port = cutil.setup(town=town,
+                                                      off_screen=off_screen,
+                                                      server_timestop=server_timestop)
+
+  @classmethod
+  def stop_carla_server(cls):
+    logging.debug("Stopping CARLA server at port={}".format(cls.server_port))
+    os.killpg(cls.carla_server.pid, signal.SIGKILL)
+    atexit.unregister(lambda: os.killpg(cls.carla_server.pid, signal.SIGKILL))
+    cls.carla_server = None
+    cls.server_port = None
+
   def __init__(
       self,
       town: str,
@@ -1606,6 +1638,7 @@ class CARLASimulator(simulator.Simulator):
       num_pedestrians: int = 0,
       fps: int = defaults.SIMULATOR_FPS,
       client_timeout: float = defaults.CARLA_CLIENT_TIMEOUT,
+      off_screen: bool = False
   ) -> None:
     """Constructs a CARLA simulator wrapper.
 
@@ -1625,12 +1658,14 @@ class CARLASimulator(simulator.Simulator):
       fps: The frequency (in Hz) of the simulation.
       client_timeout: The time interval before stopping
         the search for the carla server.
+      off_screen: If true it starts Carla server in off-screen mode.
     """
     # Configuration variables.
     self._town = town
     self._sensors = sensors
     self._fps = fps
     self._client_timeout = client_timeout
+    self._off_screen = off_screen
     self._num_vehicles = num_vehicles
     self._num_pedestrians = num_pedestrians
 
@@ -1639,6 +1674,7 @@ class CARLASimulator(simulator.Simulator):
     self._world = None
     self._frame = None
     self._server = None
+    self._traffic_manager = None
     self._frame0 = None
     self._dt = None
     self._vehicles = None
@@ -1658,6 +1694,24 @@ class CARLASimulator(simulator.Simulator):
     # Graphics setup.
     self._display = None
     self._clock = None
+
+    CARLASimulator._start_carla_server(town=self._town, off_screen=self._off_screen)
+
+    # Connect client.
+    logging.debug("Connects a CARLA client at port={}".format(CARLASimulator.server_port))
+    try:
+        self._client = carla.Client("localhost", CARLASimulator.server_port)  # pylint: disable=no-member
+        self._client.set_timeout(client_timeout)
+        self._traffic_manager = self._client.get_trafficmanager(8000)
+        self._traffic_manager.set_global_distance_to_leading_vehicle(1.0)
+        self._traffic_manager.set_synchronous_mode(True)
+        logging.debug("Server version: {}".format(self._client.get_server_version()))
+        logging.debug("Client version: {}".format(self._client.get_client_version()))
+    except RuntimeError as msg:
+      logging.debug(msg)
+      CARLASimulator.stop_carla_server()
+      logging.error("Failed to connect to CARLA server.")
+      sys.exit()
 
   @property
   def hero(self) -> carla.Vehicle:  # pylint: disable=no-member
@@ -1708,12 +1762,10 @@ class CARLASimulator(simulator.Simulator):
     Returns:
       The initial observations.
     """
-    # CARLA setup.
-    self._client, self._world, self._frame, self._server = cutil.setup(
-        town=self._town,
-        fps=self._fps,
-        client_timeout=self._client_timeout,
-    )
+    self._world, self._frame = cutil.load_and_wait_for_world(self._client,
+                                                             self._town,
+                                                             self._fps,
+                                                             self._traffic_manager)
     self._frame0 = int(self._frame)
     self._dt = self._world.get_settings().fixed_delta_seconds
 
@@ -1721,17 +1773,15 @@ class CARLASimulator(simulator.Simulator):
     self._hero = cutil.spawn_hero(
         world=self._world,
         spawn_point=self.spawn_point,
-        vehicle_id="vehicle.ford.mustang",
+        vehicle_id="vehicle.tesla.model3",
     )
     # Initializes the other vehicles.
-    self._vehicles = cutil.spawn_vehicles(
+    self._vehicles, self._pedestrians = cutil.spawn_vehicles_and_pedestrians(
         world=self._world,
+        client=self._client,
+        traffic_manager=self._traffic_manager,
         num_vehicles=self._num_vehicles,
-    )
-    # Initializes the pedestrians.
-    self._pedestrians = cutil.spawn_pedestrians(
-        world=self._world,
-        num_pedestrians=self._num_pedestrians,
+        num_pedestrians=self._num_pedestrians
     )
     # Registers the sensors.
     self._sensor_suite = simulator.SensorSuite([
@@ -1786,7 +1836,7 @@ class CARLASimulator(simulator.Simulator):
     if mode not in ("human", "rgb_array"):
       raise ValueError("Unrecognised mode value {} passed.".format(mode))
 
-    if self._display is None or self._clock is None is None:
+    if self._display is None or self._clock is None:
       # TODO(filangel): clean this up
       width = 0
       if "left_camera_rgb" in self._observations:
@@ -1838,10 +1888,10 @@ class CARLASimulator(simulator.Simulator):
     if self.sensor_suite is not None:
       self.sensor_suite.close()
       self._sensor_suite = None
-    settings = self._world.get_settings()
-    settings.synchronous_mode = False
-    self._world.apply_settings(settings)
-    logging.debug("Closes the CARLA server with process PID {}".format(
-        self._server.pid))
-    os.killpg(self._server.pid, signal.SIGKILL)
-    atexit.unregister(lambda: os.killpg(self._server.pid, signal.SIGKILL))
+    if self._world is not None:
+      settings = self._world.get_settings()
+      settings.synchronous_mode = False
+      self._world.apply_settings(settings)
+      self._world = None
+    if self._client is not None:
+      self._client = None
