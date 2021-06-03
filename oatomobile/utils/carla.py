@@ -86,6 +86,7 @@ def setup(
         [
             os.path.join(os.environ.get("CARLA_ROOT"), "CarlaUE4.sh"),
             "-carla-rpc-port={}".format(port),
+            '-opengl',
             "-quality-level=Epic",
         ],
         stdout=None,
