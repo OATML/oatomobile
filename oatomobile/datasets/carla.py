@@ -63,7 +63,7 @@ class CARLADataset(Dataset):
     return dict(
         uuid=self.uuid,
         town="Town01",
-        agent="carsuite_baselines.rulebased.Autopilot",
+        agent="oatomobile.baselines.rulebased.Autopilot",
         noise=0.2,
     )
 
