@@ -30,7 +30,7 @@ from oatomobile.torch import transforms
 from oatomobile.torch import types
 from oatomobile.torch.networks.mlp import MLP
 from oatomobile.torch.networks.perception import MobileNetV2
-from oatomobile.torch.networks.sequence import AutoregressiveFlow
+from oatomobile.torch.networks.sequence import AutoregressiveFlow, TCN
 
 
 class ImitativeModel(nn.Module):
@@ -62,9 +62,18 @@ class ImitativeModel(nn.Module):
     )
 
     # The decoder recurrent network used for the sequence generation.
-    self._decoder = AutoregressiveFlow(
-        output_shape=self._output_shape,
-        hidden_size=64,
+    # self._decoder = AutoregressiveFlow(
+    #     output_shape=self._output_shape,
+    #     hidden_size=64,
+    # )
+
+    self._decoder = TCN(
+      input_channels=1, 
+      num_input_features=64,
+      num_output_features=2,
+      num_channels=[30, 30, 30, 30, 30, 30, 30, 30, 4],
+      kernel_size=7,
+      dropout=0.2
     )
 
   def to(self, *args, **kwargs):
@@ -92,6 +101,8 @@ class ImitativeModel(nn.Module):
     Returns:
       A mode from the posterior, with shape `[D, 2]`.
     """
+
+
     if not "visual_features" in context:
       raise ValueError("Missing `visual_features` keyword argument.")
     batch_size = context["visual_features"].shape[0]

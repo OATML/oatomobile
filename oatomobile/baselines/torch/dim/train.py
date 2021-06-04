@@ -47,7 +47,7 @@ flags.DEFINE_string(
 )
 flags.DEFINE_integer(
     name="batch_size",
-    default=512,
+    default=50,
     help="The batch size used for training the neural network.",
 )
 flags.DEFINE_integer(
@@ -80,6 +80,11 @@ flags.DEFINE_bool(
     default=False,
     help="If True it clips the gradients norm to 1.0.",
 )
+flags.DEFINE_bool(
+    name="use_tcn",
+    default=True,
+    help="If True, use the TCN decoder. Otherwise, use the autoregressive decoder.",
+)
 
 
 def main(argv):
@@ -97,6 +102,7 @@ def main(argv):
   num_timesteps_to_keep = FLAGS.num_timesteps_to_keep
   weight_decay = FLAGS.weight_decay
   clip_gradients = FLAGS.clip_gradients
+  use_tcn = FLAGS.use_tcn
   noise_level = 1e-2
 
   # Determines device, accelerator.
@@ -151,7 +157,7 @@ def main(argv):
       dataset_train,
       batch_size=batch_size,
       shuffle=True,
-      num_workers=50,
+      num_workers=5,
   )
   dataset_val = CARLADataset.as_torch(
       dataset_dir=os.path.join(dataset_dir, "val"),
@@ -161,7 +167,7 @@ def main(argv):
       dataset_val,
       batch_size=batch_size * 5,
       shuffle=True,
-      num_workers=50,
+      num_workers=5,
   )
 
   # Theoretical limit of NLL.
@@ -182,10 +188,11 @@ def main(argv):
     # Resets optimizer's gradients.
     optimizer.zero_grad()
 
+    target_mean = batch["player_future"][..., :2] 
     # Perturb target.
     y = torch.normal(  # pylint: disable=no-member
-        mean=batch["player_future"][..., :2],
-        std=torch.ones_like(batch["player_future"][..., :2]) * noise_level,  # pylint: disable=no-member
+        mean=target_mean,
+        std=torch.ones_like(target_mean) * noise_level,  # pylint: disable=no-member
     )
 
     # Forward pass from the model.
@@ -195,10 +202,9 @@ def main(argv):
         is_at_traffic_light=batch["is_at_traffic_light"],
         traffic_light_state=batch["traffic_light_state"],
     )
-    _, log_prob, logabsdet = model._decoder._inverse(y=y, z=z)
 
-    # Calculates loss (NLL).
-    loss = -torch.mean(log_prob - logabsdet, dim=0)  # pylint: disable=no-member
+    target_mean = batch["player_future"][..., :2] 
+    loss = model._decoder.compute_loss(y=target_mean, z=z)
 
     # Backward pass.
     loss.backward()
@@ -240,13 +246,9 @@ def main(argv):
         is_at_traffic_light=batch["is_at_traffic_light"],
         traffic_light_state=batch["traffic_light_state"],
     )
-    _, log_prob, logabsdet = model._decoder._inverse(
-        y=batch["player_future"][..., :2],
-        z=z,
-    )
-
-    # Calculates loss (NLL).
-    loss = -torch.mean(log_prob - logabsdet, dim=0)  # pylint: disable=no-member
+    
+    target_mean = batch["player_future"][..., :2]
+    loss = model._decoder.compute_loss(y=target_mean, z=z)
 
     return loss
 
