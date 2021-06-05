@@ -12,13 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Trains the deep imitative model on expert demonstrations."""
+"""Trains the behavioural cloning agent's model on expert demonstrations."""
 
 import os
 from typing import Mapping
 
 import torch
-import torch.distributions as D
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
@@ -26,12 +25,14 @@ import tqdm
 from absl import app
 from absl import flags
 from absl import logging
+from ray import tune
 
-from oatomobile.baselines.torch.dim.model import ImitativeModel
+from oatomobile.baselines.torch.cil.model import BehaviouralModel
 from oatomobile.datasets.carla import CARLADataset
 from oatomobile.torch import types
 from oatomobile.torch.loggers import TensorBoardLogger
 from oatomobile.torch.savers import Checkpointer
+from oatomobile.utils.loggers import WandBLogger
 
 logging.set_verbosity(logging.DEBUG)
 FLAGS = flags.FLAGS
@@ -45,14 +46,14 @@ flags.DEFINE_string(
     default=None,
     help="The full path to the output directory (for logs, ckpts).",
 )
-flags.DEFINE_integer(
+flags.DEFINE_list(
     name="batch_size",
-    default=512,
+    default=[32, 64, 128, 256, 512, 1024],
     help="The batch size used for training the neural network.",
 )
-flags.DEFINE_integer(
+flags.DEFINE_list(
     name="num_epochs",
-    default=None,
+    default=[1024],
     help="The number of training epochs for the neural network.",
 )
 flags.DEFINE_integer(
@@ -60,9 +61,9 @@ flags.DEFINE_integer(
     default=4,
     help="The number epochs between saves of the model.",
 )
-flags.DEFINE_float(
+flags.DEFINE_list(
     name="learning_rate",
-    default=1e-3,
+    default=[1e-1, 1e-2, 1e-3, 1e-4, 1e-5],
     help="The ADAM learning rate.",
 )
 flags.DEFINE_integer(
@@ -70,9 +71,9 @@ flags.DEFINE_integer(
     default=4,
     help="The numbers of time-steps to keep from the target, with downsampling.",
 )
-flags.DEFINE_float(
+flags.DEFINE_list(
     name="weight_decay",
-    default=0.0,
+    default=[0.0, 1e-2, 1e-3],
     help="The L2 penalty (regularization) coefficient.",
 )
 flags.DEFINE_bool(
@@ -82,22 +83,21 @@ flags.DEFINE_bool(
 )
 
 
-def main(argv):
-  # Debugging purposes.
-  logging.debug(argv)
-  logging.debug(FLAGS)
+def main(config):
 
-  # Parses command line arguments.
-  dataset_dir = FLAGS.dataset_dir
-  output_dir = FLAGS.output_dir
-  batch_size = FLAGS.batch_size
-  num_epochs = FLAGS.num_epochs
-  learning_rate = FLAGS.learning_rate
-  save_model_frequency = FLAGS.save_model_frequency
-  num_timesteps_to_keep = FLAGS.num_timesteps_to_keep
-  weight_decay = FLAGS.weight_decay
-  clip_gradients = FLAGS.clip_gradients
-  noise_level = 1e-2
+  # Parses config arguments.
+  dataset_dir = config["dataset_dir"]
+  output_dir = config["output_dir"]
+  save_model_frequency = config["save_model_frequency"]
+  num_timesteps_to_keep = config["num_timesteps_to_keep"]
+  clip_gradients = config["clip_gradients"]
+
+  ## Parse Ray Config
+  batch_size = config["batch_size"]
+  num_epochs = config["num_epochs"]
+  learning_rate = config["learning_rate"]
+  weight_decay = config["weight_decay"]
+  noise_level = config["noise_level"]
 
   # Determines device, accelerator.
   device = torch.device("cuda" if torch.cuda.is_available() else "cpu")  # pylint: disable=no-member
@@ -111,7 +111,8 @@ def main(argv):
 
   # Initializes the model and its optimizer.
   output_shape = [num_timesteps_to_keep, 2]
-  model = ImitativeModel(output_shape=output_shape).to(device)
+  model = BehaviouralModel(output_shape=output_shape).to(device)
+  criterion = nn.L1Loss(reduction="none")
   optimizer = optim.Adam(
       model.parameters(),
       lr=learning_rate,
@@ -146,34 +147,28 @@ def main(argv):
   dataset_train = CARLADataset.as_torch(
       dataset_dir=os.path.join(dataset_dir, "train"),
       modalities=modalities,
+      mode=True,
   )
   dataloader_train = torch.utils.data.DataLoader(
       dataset_train,
       batch_size=batch_size,
       shuffle=True,
-      num_workers=50,
+      num_workers=2,
   )
   dataset_val = CARLADataset.as_torch(
       dataset_dir=os.path.join(dataset_dir, "val"),
       modalities=modalities,
+      mode=True,
   )
   dataloader_val = torch.utils.data.DataLoader(
       dataset_val,
       batch_size=batch_size * 5,
       shuffle=True,
-      num_workers=50,
+      num_workers=2,
   )
 
-  # Theoretical limit of NLL.
-  nll_limit = -torch.sum(  # pylint: disable=no-member
-      D.MultivariateNormal(
-          loc=torch.zeros(output_shape[-2] * output_shape[-1]),  # pylint: disable=no-member
-          scale_tril=torch.eye(output_shape[-2] * output_shape[-1]) *  # pylint: disable=no-member
-          noise_level,  # pylint: disable=no-member
-      ).log_prob(torch.zeros(output_shape[-2] * output_shape[-1])))  # pylint: disable=no-member
-
   def train_step(
-      model: ImitativeModel,
+      model: BehaviouralModel,
       optimizer: optim.Optimizer,
       batch: Mapping[str, torch.Tensor],
       clip: bool = False,
@@ -181,39 +176,23 @@ def main(argv):
     """Performs a single gradient-descent optimisation step."""
     # Resets optimizer's gradients.
     optimizer.zero_grad()
-
-    # Perturb target.
-    y = torch.normal(  # pylint: disable=no-member
-        mean=batch["player_future"][..., :2],
-        std=torch.ones_like(batch["player_future"][..., :2]) * noise_level,  # pylint: disable=no-member
-    )
-
     # Forward pass from the model.
-    z = model._params(
-        velocity=batch["velocity"],
-        visual_features=batch["visual_features"],
-        is_at_traffic_light=batch["is_at_traffic_light"],
-        traffic_light_state=batch["traffic_light_state"],
-    )
-    _, log_prob, logabsdet = model._decoder._inverse(y=y, z=z)
-
-    # Calculates loss (NLL).
-    loss = -torch.mean(log_prob - logabsdet, dim=0)  # pylint: disable=no-member
-
+    predictions = model(**batch)
+    # Calculates loss.
+    loss = criterion(predictions, batch["player_future"][..., :2])
+    loss = torch.sum(loss, dim=[-2, -1])  # pylint: disable=no-member
+    loss = torch.mean(loss, dim=0)  # pylint: disable=no-member
     # Backward pass.
     loss.backward()
-
     # Clips gradients norm.
     if clip:
       torch.nn.utils.clip_grad_norm(model.parameters(), 1.0)
-
     # Performs a gradient descent step.
     optimizer.step()
-
     return loss
 
   def train_epoch(
-      model: ImitativeModel,
+      model: BehaviouralModel,
       optimizer: optim.Optimizer,
       dataloader: torch.utils.data.DataLoader,
   ) -> torch.Tensor:
@@ -226,32 +205,26 @@ def main(argv):
         batch = transform(batch)
         # Performs a gradien-descent step.
         loss += train_step(model, optimizer, batch, clip=clip_gradients)
+        # Reporting loss to ray tune
+        tune.report(loss=loss)
+
     return loss / len(dataloader)
 
   def evaluate_step(
-      model: ImitativeModel,
+      model: BehaviouralModel,
       batch: Mapping[str, torch.Tensor],
   ) -> torch.Tensor:
     """Evaluates `model` on a `batch`."""
     # Forward pass from the model.
-    z = model._params(
-        velocity=batch["velocity"],
-        visual_features=batch["visual_features"],
-        is_at_traffic_light=batch["is_at_traffic_light"],
-        traffic_light_state=batch["traffic_light_state"],
-    )
-    _, log_prob, logabsdet = model._decoder._inverse(
-        y=batch["player_future"][..., :2],
-        z=z,
-    )
-
-    # Calculates loss (NLL).
-    loss = -torch.mean(log_prob - logabsdet, dim=0)  # pylint: disable=no-member
-
+    predictions = model(**batch)
+    # Calculates loss on mini-batch.
+    loss = criterion(predictions, batch["player_future"][..., :2])
+    loss = torch.sum(loss, dim=[-2, -1])  # pylint: disable=no-member
+    loss = torch.mean(loss, dim=0)  # pylint: disable=no-member
     return loss
 
   def evaluate_epoch(
-      model: ImitativeModel,
+      model: BehaviouralModel,
       dataloader: torch.utils.data.DataLoader,
   ) -> torch.Tensor:
     """Performs an evaluation of the `model` on the `dataloader."""
@@ -264,10 +237,13 @@ def main(argv):
         # Accumulates loss in dataset.
         with torch.no_grad():
           loss += evaluate_step(model, batch)
+        # Reporting loss to ray tune
+        tune.report(eval_loss=loss)
+
     return loss / len(dataloader)
 
   def write(
-      model: ImitativeModel,
+      model: BehaviouralModel,
       dataloader: torch.utils.data.DataLoader,
       writer: TensorBoardLogger,
       split: str,
@@ -279,14 +255,9 @@ def main(argv):
     batch = next(iter(dataloader))
     # Prepares the batch.
     batch = transform(batch)
-    # Turns off gradients for model parameters.
-    for params in model.parameters():
-      params.requires_grad = False
     # Generates predictions.
-    predictions = model(num_steps=20, **batch)
-    # Turns on gradients for model parameters.
-    for params in model.parameters():
-      params.requires_grad = True
+    with torch.no_grad():
+      predictions = model(**batch)
     # Logs on `TensorBoard`.
     writer.log(
         split=split,
@@ -312,16 +283,60 @@ def main(argv):
         checkpointer.save(epoch)
 
       # Updates progress bar description.
-      pbar_epoch.set_description(
-          "TL: {:.2f} | VL: {:.2f} | THEORYMIN: {:.2f}".format(
-              loss_train.detach().cpu().numpy().item(),
-              loss_val.detach().cpu().numpy().item(),
-              nll_limit,
-          ))
+      pbar_epoch.set_description("TL: {:.2f} | VL: {:.2f}".format(
+          loss_train.detach().cpu().numpy().item(),
+          loss_val.detach().cpu().numpy().item(),
+      ))
+
+
+def run_experiments(argv):
+  # Debugging purposes.
+  logging.debug(argv)
+  logging.debug(FLAGS)
+
+  # Parses command line arguments.
+  dataset_dir = FLAGS.dataset_dir
+  output_dir = FLAGS.output_dir
+  batch_size = FLAGS.batch_size
+  num_epochs = FLAGS.num_epochs
+  learning_rate = FLAGS.learning_rate
+  save_model_frequency = FLAGS.save_model_frequency
+  num_timesteps_to_keep = FLAGS.num_timesteps_to_keep
+  weight_decay = FLAGS.weight_decay
+  clip_gradients = FLAGS.clip_gradients
+  noise_level = [1e-1, 1e-2, 1e-3]
+
+  analysis = tune.run(
+      main,
+      loggers=[WandBLogger],
+      num_samples=1,
+      resources_per_trial={
+          'gpu': torch.cuda.device_count(),
+      },
+      config={
+          "monitor": True,
+          "wandb": {
+              "project": "oatomobile",
+              "monitor_gym": True,
+          },
+          "dataset_dir": dataset_dir,
+          "output_dir": output_dir,
+          "save_model_frequency": save_model_frequency,
+          "num_timesteps_to_keep": num_timesteps_to_keep,
+          "clip_gradients": clip_gradients,
+          "batch_size": tune.grid_search(batch_size),
+          "num_epochs": tune.grid_search(num_epochs),
+          "learning_rate": tune.grid_search(learning_rate),
+          "weight_decay": tune.grid_search(weight_decay),
+          "noise_level": tune.grid_search(noise_level),
+      },
+  )
+
+  print("Best config: ", analysis.get_best_config(metric="loss"))
 
 
 if __name__ == "__main__":
   flags.mark_flag_as_required("dataset_dir")
   flags.mark_flag_as_required("output_dir")
   flags.mark_flag_as_required("num_epochs")
-  app.run(main)
+  app.run(run_experiments)
