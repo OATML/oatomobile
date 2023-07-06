@@ -53,7 +53,7 @@ setup(
         "matplotlib==3.0.3",
         "seaborn==0.9.1",
         "pandas==0.25.3",
-        "scipy==1.4.1",
+        "scipy==1.10.0",
         "transforms3d==0.3.1",
         "tqdm==4.42.1",
         "wget==3.2",
